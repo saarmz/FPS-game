@@ -1,7 +1,7 @@
 from unittest import runner
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
-import socket, random
+import socket, random, time
 
 application.development_mode = False
 app = Ursina() # creating a window
@@ -16,20 +16,44 @@ wall_3 = duplicate(wall_1, z=10)
 my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
 walking_speed = my_player.speed
 
-gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.4, -.40, -.1),
+gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
     rotation=(0, 75, 8))
 gun_up = False
-
 running = False
-
+shooting = False
+shooting_sounds = {
+    "M4_first": Audio("sounds/m4_first.mp3", autoplay=False),
+    "M4_shots": Audio("sounds/automat_m4.mp3", autoplay=False),
+    "M4_ending": Audio("sounds/m4_ending.mp3", autoplay=False)
+    }
+last_shot = time.perf_counter()
+curr_time = time.perf_counter()
 enemies = [] # a list of the other players
+
+def input(key):
+    pass
 
 
 def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running
+    global gun_up, running, shooting, last_shot, curr_time
+
+    #shooting sounds
+    if held_keys["left mouse"]:
+        curr_time = time.perf_counter()
+        if shooting is True and (curr_time - last_shot) >= .148:
+            shooting_sounds["M4_shots"].play()
+            last_shot = curr_time
+        elif shooting is False:
+            shooting_sounds["M4_first"].play()
+            curr_time = time.perf_counter()
+            shooting = True
+    elif shooting is True:
+        shooting_sounds["M4_ending"].play()
+        shooting = False
+
     #moving the gun while walking
     if held_keys["shift"]:
         running = True
