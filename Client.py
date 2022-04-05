@@ -54,32 +54,35 @@ def update():
         shooting_sounds["M4_ending"].play()
         shooting = False
 
-    #moving the gun while walking
-    if held_keys["shift"]:
-        running = True
-        my_player.speed = 2 * walking_speed
-    elif running == True and not held_keys["shift"]:
-        my_player.speed = walking_speed
-    
-    if held_keys['w'] or held_keys['s'] or held_keys['d'] or held_keys['a']:
-        if gun.y > -.6 and not gun_up:
-            gun.y -= .01
-            gun.x -= .008
-            gun.rotation = (gun.x - .4, 75 + gun.y * 20, 8)
+    #moving the gun while walking    
+    if not shooting:
+        if held_keys["shift"]:
+            running = True
+            my_player.speed = 2 * walking_speed
+        elif running == True and not held_keys["shift"]:
+            my_player.speed = walking_speed
+        if held_keys['w'] or held_keys['s'] or held_keys['d'] or held_keys['a']:
+            if gun.y > -.6 and not gun_up:
+                gun.y -= .01
+                gun.x -= .008
+                gun.rotation = (gun.x - .4, 75 + gun.y * 20, 8)
 
-        elif gun.y < -.35:
-            gun_up = True
-            gun.y += .008
-            gun.x += .006
-            gun.rotation = (.4 - gun.x, 75 + gun.y * 20, 8)
-
+            elif gun.y < -.35:
+                gun_up = True
+                gun.y += .008
+                gun.x += .006
+                gun.rotation = (.4 - gun.x, 75 + gun.y * 20, 8)
+            else:
+                gun_up = False
+                gun.x = .439
         else:
-            gun_up = False
-            gun.x = .439
+            gun.position = (.4, -.40, -.1)
+            gun.rotation = (0, 75, 8)
     else:
-
         gun.position = (.4, -.40, -.1)
         gun.rotation = (0, 75, 8)
+        running = False
+        my_player.speed = walking_speed
 
 
 def login():
