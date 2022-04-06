@@ -13,6 +13,10 @@ wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5
 wall_2 = duplicate(wall_1, z=5)
 wall_3 = duplicate(wall_1, z=10)
 
+background_sounds = {
+    "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
+}
+
 my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
 my_char = Entity(model="objs/soldier.obj", texture="Texture/im5.png", scale=.027)
 walking_speed = my_player.speed
@@ -23,44 +27,85 @@ gun_up = False
 moving = False
 running = False
 shooting = False
-shooting_sounds = {
-    "M4_shots": Audio("sounds/m4_burst.mp3", autoplay=False, volume=2),
-    "M4_ending": Audio("sounds/m4_ending2.mp3", autoplay=False, volume=2),
-    "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
+m4_sounds = {
+    "M4_burst": Audio("sounds/m4_shots/m4_burst.mp3", autoplay=False, volume=2),
+    "M4_ending": Audio("sounds/m4_shots/m4_ending2.mp3", autoplay=False, volume=2),
+    "last8": Audio("sounds/m4_shots/m4_last8.mp3", autoplay=False, volume=2),
+    "last7": Audio("sounds/m4_shots/m4_last7.mp3", autoplay=False, volume=2),
+    "last6": Audio("sounds/m4_shots/m4_last6.mp3", autoplay=False, volume=2),
+    "last5": Audio("sounds/m4_shots/m4_last5.mp3", autoplay=False, volume=2),
+    "last4": Audio("sounds/m4_shots/m4_last4.mp3", autoplay=False, volume=2),
+    "last3": Audio("sounds/m4_shots/m4_last3.mp3", autoplay=False, volume=2),
+    "last2": Audio("sounds/m4_shots/m4_last2.mp3", autoplay=False, volume=2),
+    "last1": Audio("sounds/m4_shots/m4_last1.mp3", autoplay=False, volume=2),
     }
 mag = 30
-txt = Text(text = f"mag: {mag}")
+mag_size = Text(f"mag: {mag}", origin=(7, 10))
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
 enemies = [] # a list of the other players
 
 def input(key):
-    pass
+    global mag, mag_size
+    if key == 'r':
+        mag = 30
+        mag_size.text = f"mag: {mag}"
 
+def m4_sound():
+    global shooting, mag
+    if mag > 8:
+        m4_sounds["M4_burst"].play()
+    elif mag == 8:
+        m4_sounds["last8"].play()
+    elif mag == 7:
+        m4_sounds["last7"].play()
+    elif mag == 6:
+        m4_sounds["last6"].play()
+    elif mag == 5:
+        m4_sounds["last5"].play()
+    elif mag == 4:
+        m4_sounds["last4"].play()
+    elif mag == 3:
+        m4_sounds["last3"].play()
+    elif mag == 2:
+        m4_sounds["last2"].play()
+    elif mag == 1:
+        m4_sounds["last1"].play()
+        shooting = False
+
+def shooting_sounds():
+    global mag, shooting, last_shot, curr_time, mag_size, m4_sounds
+    #shooting sounds
+    if held_keys["left mouse"] and mag > 0:
+        if not shooting:
+            shooting = True
+            last_shot = time.perf_counter()
+            mag -= 1
+            m4_sound()
+            mag_size.text = f"mag: {mag}"
+        else:
+            curr_time = time.perf_counter()
+            if curr_time - last_shot >= .085:
+                mag -= 1
+                if mag == 8:
+                    m4_sounds["M4_burst"].stop()
+                    m4_sounds["last8"].play()
+                last_shot = curr_time
+                mag_size.text = f"mag: {mag}"
+    elif shooting is True:
+        if mag > 0:
+            for i in m4_sounds:
+                m4_sounds[i].stop()
+            m4_sounds["M4_ending"].play()
+        shooting = False
 
 def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running, shooting, mag, last_shot, curr_time, moving, txt
-    #shooting sounds
-    if held_keys["left mouse"] and mag > 0:
-        if not shooting:
-            shooting = True
-            shooting_sounds["M4_shots"].play()
-            last_shot = time.perf_counter()
-            mag -= 1
-        else:
-            curr_time = time.perf_counter()
-            if curr_time - last_shot >= .078:
-                mag -= 1
-                last_shot = curr_time
-                txt.text = f"mag: {mag}"
-    elif shooting is True:
-        shooting_sounds["M4_shots"].stop()
-        shooting_sounds["M4_ending"].play()
-        shooting = False
-
+    global gun_up, running, shooting, mag, last_shot, curr_time, moving, mag_size
+    
+    shooting_sounds()
     #moving the gun while walking    
     if not shooting:
         if held_keys["shift"]:
@@ -106,8 +151,8 @@ def start():
     login()
     Sky()
     window.title = 'My Game'
-    window.fullscreen = False
-    window.borderless = False
+    window.fullscreen = True
+    window.borderless = True
 
 
 def main():
