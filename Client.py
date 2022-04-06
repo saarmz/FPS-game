@@ -1,7 +1,7 @@
 from unittest import runner
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
-import socket, random, time
+import time, threading, socket, random
 
 application.development_mode = False
 app = Ursina() # creating a window
@@ -73,6 +73,14 @@ def m4_sound():
         m4_sounds["last1"].play()
         shooting = False
 
+def stop_shooting():
+    global mag, shooting
+    time.sleep(.05)
+    for i in m4_sounds:
+        m4_sounds[i].stop()
+    m4_sounds["M4_ending"].play()
+    
+
 def shooting_sounds():
     global mag, shooting, last_shot, curr_time, mag_size, m4_sounds
     #shooting sounds
@@ -94,16 +102,15 @@ def shooting_sounds():
                 mag_size.text = f"mag: {mag}"
     elif shooting is True:
         if mag > 0:
-            for i in m4_sounds:
-                m4_sounds[i].stop()
-            m4_sounds["M4_ending"].play()
+            x = threading.Thread(target=stop_shooting)
+            x.start()
         shooting = False
 
 def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running, shooting, mag, last_shot, curr_time, moving, mag_size
+    global gun_up, running, moving
     
     shooting_sounds()
     #moving the gun while walking    
