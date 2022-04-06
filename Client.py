@@ -14,18 +14,22 @@ wall_2 = duplicate(wall_1, z=5)
 wall_3 = duplicate(wall_1, z=10)
 
 my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
+my_char = Entity(model="objs/soldier.obj", texture="Texture/im5.png", scale=.027)
 walking_speed = my_player.speed
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
     rotation=(0, 75, 8))
 gun_up = False
+moving = False
 running = False
 shooting = False
 shooting_sounds = {
-    "M4_first": Audio("sounds/m4_first.mp3", autoplay=False),
-    "M4_shots": Audio("sounds/automat_m4.mp3", autoplay=False),
-    "M4_ending": Audio("sounds/m4_ending.mp3", autoplay=False)
+    "M4_shots": Audio("sounds/m4_burst.mp3", autoplay=False, volume=2),
+    "M4_ending": Audio("sounds/m4_ending2.mp3", autoplay=False, volume=2),
+    "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
     }
+mag = 30
+txt = Text(text = f"mag: {mag}")
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
 enemies = [] # a list of the other players
@@ -38,19 +42,22 @@ def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running, shooting, last_shot, curr_time
-
+    global gun_up, running, shooting, mag, last_shot, curr_time, moving, txt
     #shooting sounds
-    if held_keys["left mouse"]:
-        curr_time = time.perf_counter()
-        if shooting is True and (curr_time - last_shot) >= .148:
-            shooting_sounds["M4_shots"].play()
-            last_shot = curr_time
-        elif shooting is False:
-            shooting_sounds["M4_first"].play()
-            curr_time = time.perf_counter()
+    if held_keys["left mouse"] and mag > 0:
+        if not shooting:
             shooting = True
+            shooting_sounds["M4_shots"].play()
+            last_shot = time.perf_counter()
+            mag -= 1
+        else:
+            curr_time = time.perf_counter()
+            if curr_time - last_shot >= .078:
+                mag -= 1
+                last_shot = curr_time
+                txt.text = f"mag: {mag}"
     elif shooting is True:
+        shooting_sounds["M4_shots"].stop()
         shooting_sounds["M4_ending"].play()
         shooting = False
 
@@ -62,6 +69,9 @@ def update():
         elif running == True and not held_keys["shift"]:
             my_player.speed = walking_speed
         if held_keys['w'] or held_keys['s'] or held_keys['d'] or held_keys['a']:
+            if not moving:
+                moving = True
+
             if gun.y > -.6 and not gun_up:
                 gun.y -= .01
                 gun.x -= .008
@@ -78,9 +88,10 @@ def update():
         else:
             gun.position = (.4, -.40, -.1)
             gun.rotation = (0, 75, 8)
-    else:
+    elif moving:
         gun.position = (.4, -.40, -.1)
         gun.rotation = (0, 75, 8)
+        moving = False
         running = False
         my_player.speed = walking_speed
 
@@ -95,7 +106,7 @@ def start():
     login()
     Sky()
     window.title = 'My Game'
-    window.fullscreen = True
+    window.fullscreen = False
     window.borderless = False
 
 

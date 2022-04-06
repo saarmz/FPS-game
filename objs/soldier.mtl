@@ -1,0 +1,100 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 02.03.2021 09:56:25
+
+newmtl 1
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im1.png
+	map_Kd Texture\im1.png
+
+newmtl 2
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im2.png
+	map_Kd Texture\im2.png
+
+newmtl 3
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im3.png
+	map_Kd Texture\im3.png
+
+newmtl 4
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im4.png
+	map_Kd Texture\im4.png
+
+newmtl 5
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im5.png
+	map_Kd Texture\im5.png
+
+newmtl 6
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im6.png
+	map_Kd Texture\im6.png
+
+newmtl 7
+	Ns 32.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4471 0.5490 0.7059
+	Kd 0.4471 0.5490 0.7059
+	Ks 0.3500 0.3500 0.3500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texture\im7.png
+	map_Kd Texture\im7.png
