@@ -12,8 +12,8 @@ newmtl 1
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im1.png
-	map_Kd Texture\im1.png
+	map_Ka D:\on sell\Character\Texture\1.png
+	map_Kd D:\on sell\Character\Texture\1.png
 
 newmtl 2
 	Ns 32.0000
@@ -26,8 +26,8 @@ newmtl 2
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im2.png
-	map_Kd Texture\im2.png
+	map_Ka D:\on sell\Character\Texture\2.png
+	map_Kd D:\on sell\Character\Texture\2.png
 
 newmtl 3
 	Ns 32.0000
@@ -40,8 +40,8 @@ newmtl 3
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im3.png
-	map_Kd Texture\im3.png
+	map_Ka D:\on sell\Character\Texture\3.png
+	map_Kd D:\on sell\Character\Texture\3.png
 
 newmtl 4
 	Ns 32.0000
@@ -54,8 +54,8 @@ newmtl 4
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im4.png
-	map_Kd Texture\im4.png
+	map_Ka D:\on sell\Character\Texture\4.png
+	map_Kd D:\on sell\Character\Texture\4.png
 
 newmtl 5
 	Ns 32.0000
@@ -68,8 +68,8 @@ newmtl 5
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im5.png
-	map_Kd Texture\im5.png
+	map_Ka D:\on sell\Character\Texture\5.png
+	map_Kd D:\on sell\Character\Texture\5.png
 
 newmtl 6
 	Ns 32.0000
@@ -82,8 +82,8 @@ newmtl 6
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im6.png
-	map_Kd Texture\im6.png
+	map_Ka D:\on sell\Character\Texture\6.png
+	map_Kd D:\on sell\Character\Texture\6.png
 
 newmtl 7
 	Ns 32.0000
@@ -96,5 +96,5 @@ newmtl 7
 	Kd 0.4471 0.5490 0.7059
 	Ks 0.3500 0.3500 0.3500
 	Ke 0.0000 0.0000 0.0000
-	map_Ka Texture\im7.png
-	map_Kd Texture\im7.png
+	map_Ka D:\on sell\Character\Texture\7.png
+	map_Kd D:\on sell\Character\Texture\7.png

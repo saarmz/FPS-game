@@ -18,7 +18,7 @@ background_sounds = {
 }
 
 my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
-my_char = Entity(model="objs/soldier.obj", texture="Texture/im5.png", scale=.027)
+my_char = Entity(model="objs/soap.obj", scale=.027)
 walking_speed = my_player.speed
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
