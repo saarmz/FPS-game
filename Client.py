@@ -18,7 +18,7 @@ background_sounds = {
 }
 
 my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
-my_char = Entity(model="objs/soap.obj", scale=.027)
+my_char = Entity(model="objs/soldier.obj", scale=.07, collider=True)
 walking_speed = my_player.speed
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
@@ -112,6 +112,9 @@ def update():
     """
     global gun_up, running, moving
     
+    my_char.rotation = (0, random.randint(1, 101) / 10, 0)
+
+
     shooting_sounds()
     #moving the gun while walking    
     if not shooting:
