@@ -89,12 +89,14 @@ def shooting_sounds():
             shooting = True
             last_shot = time.perf_counter()
             mag -= 1
+            mouse.position = (mouse.x, mouse.y + .04)
             m4_sound()
             mag_size.text = f"mag: {mag}"
         else:
             curr_time = time.perf_counter()
             if curr_time - last_shot >= .085:
                 mag -= 1
+                mouse.position = (mouse.x, mouse.y + .04)
                 if mag == 8:
                     m4_sounds["M4_burst"].stop()
                     m4_sounds["last8"].play()
