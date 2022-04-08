@@ -1,3 +1,4 @@
+from turtle import position
 from unittest import runner
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
@@ -18,7 +19,7 @@ background_sounds = {
 }
 
 my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
-my_char = Entity(model="objs/soldier.obj", scale=.07, collider=True)
+my_player.cursor.color = color.white
 walking_speed = my_player.speed
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
@@ -44,6 +45,9 @@ mag_size = Text(f"mag: {mag}", origin=(7, 10))
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
 enemies = [] # a list of the other players
+
+enemy = Entity(model="objs/soldier.obj", scale=.07, collider="box", position=(0, 0, 5))
+
 
 def input(key):
     global mag, mag_size
@@ -73,6 +77,7 @@ def m4_sound():
         m4_sounds["last1"].play()
         shooting = False
 
+
 def stop_shooting():
     global mag, shooting
     time.sleep(.05)
@@ -80,6 +85,8 @@ def stop_shooting():
         m4_sounds[i].stop()
     m4_sounds["M4_ending"].play()
     
+def muzzle_flash(entity):
+    pass
 
 def shooting_sounds():
     global mag, shooting, last_shot, curr_time, mag_size, m4_sounds
@@ -91,11 +98,13 @@ def shooting_sounds():
             mag -= 1
             mouse.position = (mouse.x, mouse.y + .04)
             m4_sound()
+            muzzle_flash(camera.ui)
             mag_size.text = f"mag: {mag}"
         else:
             curr_time = time.perf_counter()
             if curr_time - last_shot >= .085:
                 mag -= 1
+                muzzle_flash(camera.ui)
                 mouse.position = (mouse.x, mouse.y + .04)
                 if mag == 8:
                     m4_sounds["M4_burst"].stop()
@@ -113,9 +122,8 @@ def update():
     Updates values and then renders to screen
     """
     global gun_up, running, moving
-    
-    my_char.rotation = (0, random.randint(1, 101) / 10, 0)
 
+    enemy.look_at(camera.ui)
 
     shooting_sounds()
     #moving the gun while walking    
