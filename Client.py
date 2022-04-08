@@ -7,6 +7,30 @@ import time, threading, socket, random
 application.development_mode = False
 app = Ursina() # creating a window
 
+class Bullet(Entity):
+    def __init__(self, speed=5, lifetime=10, **kwargs):
+        super().__init__(**kwargs)
+        self.speed = speed
+        self.lifetime = lifetime
+        self.start = time.time()
+
+    def update(self):
+        ray = raycast(self.world_position, self.forward, distance=self.speed*time.dt)
+        if not ray.hit and time.time() - self.start < self.lifetime:
+            self.world_position += self.forward * self.speed * time.daylight
+        else:
+            destroy(self)
+
+class Enemy():
+    def __init__(self, name, x, y, z) -> None:
+        self.name = name
+        self.entity = Entity(model="objs/soldier.obj", scale=.07, collider="box", position=(x, y, z))
+
+    def update_loc(self, x, y, z) -> None:
+        self.entity.position = (x, y, z)
+
+enemies = {} # a list of the other players
+
 ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
     texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
 wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
@@ -44,9 +68,6 @@ mag = 30
 mag_size = Text(f"mag: {mag}", origin=(7, 10))
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
-enemies = [] # a list of the other players
-
-enemy = Entity(model="objs/soldier.obj", scale=.07, collider="box", position=(0, 0, 5))
 
 
 def input(key):
@@ -88,6 +109,12 @@ def stop_shooting():
 def muzzle_flash(entity):
     pass
 
+def shoot_check_hit():
+    global enemies
+
+    Bullet(model="sphere", color=color.gold, scale=20, position=gun.world_position,
+    rotation=camera.world_rotation)
+
 def shooting_sounds():
     global mag, shooting, last_shot, curr_time, mag_size, m4_sounds
     #shooting sounds
@@ -96,6 +123,7 @@ def shooting_sounds():
             shooting = True
             last_shot = time.perf_counter()
             mag -= 1
+            shoot_check_hit()
             mouse.position = (mouse.x, mouse.y + .04)
             m4_sound()
             muzzle_flash(camera.ui)
@@ -104,6 +132,7 @@ def shooting_sounds():
             curr_time = time.perf_counter()
             if curr_time - last_shot >= .085:
                 mag -= 1
+                shoot_check_hit()
                 muzzle_flash(camera.ui)
                 mouse.position = (mouse.x, mouse.y + .04)
                 if mag == 8:
@@ -122,8 +151,6 @@ def update():
     Updates values and then renders to screen
     """
     global gun_up, running, moving
-
-    enemy.look_at(camera.ui)
 
     shooting_sounds()
     #moving the gun while walking    
@@ -173,6 +200,10 @@ def start():
     window.title = 'My Game'
     window.fullscreen = True
     window.borderless = True
+
+    enemies["Mike"] = Enemy("Mike", 0, 0, 7)
+    enemies["John"] = Enemy("John", 5,  0, 5)
+    enemies["Mike"].update_loc(2, 0, -8)
 
 
 def main():
