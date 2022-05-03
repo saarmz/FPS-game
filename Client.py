@@ -21,22 +21,26 @@ class Bullet(Entity):
         else:
             destroy(self)
 
-class Enemy():
+class Enemy(Button):
     def __init__(self, name, x, y, z) -> None:
+        super().__init__(
+            parent=scene,
+            model="objs/soldier.obj",
+            scale=.07,
+            collider="box",
+            position=(x,y,z),
+            color = self.color.tint(1),
+            highlight_color = self.color.tint(1),
+            pressed_color = self.color.tint(1)
+        )
         self.name = name
-        self.entity = Entity(model="objs/soldier.obj", scale=.07, collider="box", position=(x, y, z))
 
     def update_loc(self, x, y, z) -> None:
-        self.entity.position = (x, y, z)
+        self.position = (x, y, z)
 
 enemies = {} # a list of the other players
 
-ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
-    texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
-wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
-    texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
-wall_2 = duplicate(wall_1, z=5)
-wall_3 = duplicate(wall_1, z=10)
+
 
 background_sounds = {
     "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
@@ -112,8 +116,14 @@ def muzzle_flash(entity):
 def shoot_check_hit():
     global enemies
 
-    Bullet(model="sphere", color=color.gold, scale=20, position=gun.world_position,
-    rotation=camera.world_rotation)
+    Bullet(model="sphere", color=color.gold, scale=1, position=my_player.camera_pivot.world_position,
+    rotation=my_player.camera_pivot.world_rotation)
+    for enemy in enemies:
+        if enemies[enemy].hovered:
+            destroy(enemies[enemy])
+            enemies.pop(enemy)
+            break
+
 
 def shooting_sounds():
     global mag, shooting, last_shot, curr_time, mag_size, m4_sounds
@@ -197,13 +207,18 @@ def login():
 def start():
     login()
     Sky()
+    ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
+    texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
+    wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
+        texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
+    wall_2 = duplicate(wall_1, z=5)
+    wall_3 = duplicate(wall_1, z=10)
     window.title = 'My Game'
     window.fullscreen = True
     window.borderless = True
 
-    enemies["Mike"] = Enemy("Mike", 0, 0, 7)
-    enemies["John"] = Enemy("John", 5,  0, 5)
-    enemies["Mike"].update_loc(2, 0, -8)
+    enemies["Mike"] = Enemy("Mike", 25, 0, 7)
+    enemies["John"] = Enemy("John", 8,  0, 5)
 
 
 def main():

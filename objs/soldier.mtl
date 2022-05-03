@@ -1,7 +1,7 @@
 # Blender MTL File: 'None'
 # Material Count: 5
 
-newmtl Characters_For_Andrew:lambert
+newmtl Characters_For_Andrew:lambert.001
 Ns 94.117650
 Ka 1.000000 1.000000 1.000000
 Kd 1.000000 0.715751 0.512496
@@ -12,7 +12,7 @@ d 0.000000
 illum 1
 map_Kd U:\\Dropbox\\SyntyStudios\\PolygonMilitary\\_Working\\_Textures\\PolygonMilitary_Texture_01_A.psd
 
-newmtl Material.001
+newmtl Material.005
 Ns 96.078421
 Ka 1.000000 1.000000 1.000000
 Kd 0.039680 0.039680 0.039680
@@ -22,7 +22,17 @@ Ni 1.450000
 d 0.000000
 illum 1
 
-newmtl Material.002
+newmtl Material.006
+Ns 96.078421
+Ka 1.000000 1.000000 1.000000
+Kd 0.106535 0.106535 0.106535
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 0.000000
+illum 1
+
+newmtl Material.007
 Ns 96.078421
 Ka 1.000000 1.000000 1.000000
 Kd 0.190178 0.161486 0.081978
@@ -32,20 +42,10 @@ Ni 1.450000
 d 0.000000
 illum 1
 
-newmtl Material.003
+newmtl Material.008
 Ns 96.078421
 Ka 1.000000 1.000000 1.000000
 Kd 0.367238 0.309556 0.154754
-Ks 0.000000 0.000000 0.000000
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 0.000000
-illum 1
-
-newmtl Material.004
-Ns 96.078421
-Ka 1.000000 1.000000 1.000000
-Kd 0.106535 0.106535 0.106535
 Ks 0.000000 0.000000 0.000000
 Ke 0.000000 0.000000 0.000000
 Ni 1.450000
