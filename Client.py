@@ -8,7 +8,7 @@ application.development_mode = False
 app = Ursina() # creating a window
 
 class Bullet(Entity):
-    def __init__(self, speed=5, lifetime=10, **kwargs):
+    def __init__(self, speed=20, lifetime=10, **kwargs):
         super().__init__(**kwargs)
         self.speed = speed
         self.lifetime = lifetime
@@ -27,11 +27,11 @@ class Enemy(Button):
             parent=scene,
             model="objs/soldier.obj",
             scale=.07,
-            collider="box",
             position=(x,y,z),
             color = self.color.tint(1),
             highlight_color = self.color.tint(1),
-            pressed_color = self.color.tint(1)
+            pressed_color = self.color.tint(1),
+            collider = "mesh"
         )
         self.name = name
 
@@ -46,7 +46,7 @@ background_sounds = {
     "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
 }
 
-my_player = FirstPersonController(y = 2, origin_y = -0.5) # this client's player
+my_player = FirstPersonController(y = 6, origin_y = -0.5) # this client's player
 my_player.cursor.color = color.white
 walking_speed = my_player.speed
 
@@ -219,6 +219,8 @@ def start():
 
     enemies["Mike"] = Enemy("Mike", 25, 0, 7)
     enemies["John"] = Enemy("John", 8,  0, 5)
+    enemies["Willy"] = Enemy("Willy", 14, 0, 3)
+    enemies["Bob"] = Enemy("Bob", 5,  0, -9)
 
 
 def main():
