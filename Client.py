@@ -4,7 +4,8 @@ from turtle import position
 from unittest import runner
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
-import time, threading, socket, random
+import time, threading, socket
+from random import randint
 
 application.development_mode = False
 app = Ursina() # creating a window
@@ -234,9 +235,11 @@ def start():
     window.fullscreen = True
     window.borderless = True
 
-    enemies["name1"] = Enemy("name1", 5, 0, 14, 3, True)
-    enemies["name2"] = Enemy("name2", 5, 0, 12, 2, True)
-    enemies["Mike"] = Enemy("Mike", 5, 0, 10, 1, True)
+    enemies["name1"] = Enemy("name1", 5, 0, 18, 4, True)
+    enemies["name2"] = Enemy("name2", 5, 0, 16, 3, True)
+    enemies["name3"] = Enemy("name3", 5, 0, 14, 2, True)
+    enemies["Mike"] = Enemy("Mike", 5, 0, 12, 1, True)
+    enemies["Jeff"] = Enemy("Jeff", 5,  0, 10, 4, False)
     enemies["John"] = Enemy("John", 5,  0, 8, 3, False)
     enemies["Willy"] = Enemy("Willy", 5, 0, 6, 2, False)
     enemies["Bob"] = Enemy("Bob", 5,  0, 4, 1, False)
