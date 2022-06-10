@@ -1,3 +1,5 @@
+from pickle import FALSE
+from pydoc import visiblename
 from turtle import position
 from unittest import runner
 from ursina import *
@@ -22,10 +24,10 @@ class Bullet(Entity):
             destroy(self)
 
 class Enemy(Button):
-    def __init__(self, name, x, y, z) -> None:
+    def __init__(self, name, x, y, z, walk_state) -> None:
         super().__init__(
             parent=scene,
-            model="objs/soldier.obj",
+            model=f"objs/soldier{walk_state}.obj",
             scale=.07,
             position=(x,y,z),
             color = self.color.tint(1),
@@ -33,10 +35,25 @@ class Enemy(Button):
             pressed_color = self.color.tint(1),
             collider = "mesh"
         )
+        self.x = x
+        self.y = y
+        self.z = z
         self.name = name
+        self.walking = False
+        self.walk_state = walk_state
+        txt = Text(text=name, parent=self, billboard=True)
 
     def update_loc(self, x, y, z) -> None:
         self.position = (x, y, z)
+    
+    def walk(self):
+        if self.walking:
+            pass
+        else:
+            self.walking = True
+            destroy(enemies[self.name])
+            enemies[self.name] = Enemy(self.name, self.x, self.y, self.z, self.walk_state+1)
+
 
 enemies = {} # a list of the other players
 
@@ -46,7 +63,9 @@ background_sounds = {
     "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
 }
 
-my_player = FirstPersonController(y = 6, origin_y = -0.5) # this client's player
+ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
+    texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
+my_player = FirstPersonController(position = (0, 2, 0)) # this client's player
 my_player.cursor.color = color.white
 walking_speed = my_player.speed
 
@@ -163,6 +182,9 @@ def update():
     global gun_up, running, moving
 
     shooting_sounds()
+
+    #TODO: make players' names visible
+
     #moving the gun while walking    
     if not shooting:
         if held_keys["shift"]:
@@ -207,8 +229,6 @@ def login():
 def start():
     login()
     Sky()
-    ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
-    texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
     wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
         texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
     wall_2 = duplicate(wall_1, z=5)
@@ -217,10 +237,10 @@ def start():
     window.fullscreen = True
     window.borderless = True
 
-    enemies["Mike"] = Enemy("Mike", 25, 0, 7)
-    enemies["John"] = Enemy("John", 8,  0, 5)
-    enemies["Willy"] = Enemy("Willy", 14, 0, 3)
-    enemies["Bob"] = Enemy("Bob", 5,  0, -9)
+    enemies["Mike"] = Enemy("Mike", 25, 0, 7, 2)
+    enemies["John"] = Enemy("John", 8,  0, 5, 1)
+    enemies["Willy"] = Enemy("Willy", 14, 0, 3, 3)
+    enemies["Bob"] = Enemy("Bob", 5,  0, -9, 1)
 
 
 def main():
