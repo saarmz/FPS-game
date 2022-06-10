@@ -23,24 +23,18 @@ class Bullet(Entity):
         else:
             destroy(self)
 
-class Enemy(Button):
+class Enemy(Entity):
     def __init__(self, name, x, y, z, walk_state, shooting) -> None:
         super().__init__(
             parent=scene,
             scale=.07,
-            position=(x,y,z),
-            color = self.color.tint(1),
-            highlight_color = self.color.tint(1),
-            pressed_color = self.color.tint(1)
+            position=(x,y,z)
         )
         if not shooting:
             self.model=f"objs/soldier{walk_state}.obj"
         else:
             self.model=f"objs/shooting{walk_state}.obj"
         self.collider = "mesh"
-        self.x = x
-        self.y = y
-        self.z = z
         self.name = name
         self.walking = False
         self.walk_state = walk_state
