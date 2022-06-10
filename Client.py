@@ -24,22 +24,15 @@ class Bullet(Entity):
         else:
             destroy(self)
 
-class Enemy(Entity):
-    def __init__(self, name, x, y, z, walk_state, shooting) -> None:
-        super().__init__(
-            parent=scene,
-            scale=.07,
-            position=(x,y,z)
-        )
-        if not shooting:
-            self.model=f"objs/soldier{walk_state}.obj"
+class Enemy():
+    def __init__(self, name, x, y, z, shooting) -> None:
+        if shooting:
+            enemy=FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), collider="mesh")
         else:
-            self.model=f"objs/shooting{walk_state}.obj"
-        self.collider = "mesh"
+            enemy=FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z), collider="mesh")
         self.name = name
         self.walking = False
-        self.walk_state = walk_state
-        txt = Text(text=name, parent=self, billboard=True)
+        # txt = Text(text=name, parent=self, billboard=True)
 
     def update_loc(self, x, y, z) -> None:
         self.position = (x, y, z)
@@ -54,6 +47,7 @@ class Enemy(Entity):
 
 
 enemies = {} # a list of the other players
+enemy_objs = {}
 
 
 
@@ -62,13 +56,13 @@ background_sounds = {
 }
 
 ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
-    texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
+                texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
 my_player = FirstPersonController(position = (0, 2, 0)) # this client's player
 my_player.cursor.color = color.white
 walking_speed = my_player.speed
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
-    rotation=(0, 75, 8))
+            rotation=(0, 75, 8))
 gun_up = False
 moving = False
 running = False
@@ -134,12 +128,13 @@ def shoot_check_hit():
     global enemies
 
     Bullet(model="sphere", color=color.gold, scale=1, position=my_player.camera_pivot.world_position,
-    rotation=my_player.camera_pivot.world_rotation)
-    for enemy in enemies:
-        if enemies[enemy].hovered:
-            destroy(enemies[enemy])
-            enemies.pop(enemy)
-            break
+            rotation=my_player.camera_pivot.world_rotation)
+    if len(enemies) > 0:
+        for enemy in enemies:
+            if enemies[enemy].hovered:
+                destroy(enemies[enemy])
+                enemies.pop(enemy)
+                break
 
 
 def shooting_sounds():
@@ -228,21 +223,18 @@ def start():
     login()
     Sky()
     wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
-        texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
+                    texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
     wall_2 = duplicate(wall_1, z=5)
     wall_3 = duplicate(wall_1, z=10)
     window.title = 'My Game'
     window.fullscreen = True
     window.borderless = True
 
-    enemies["name1"] = Enemy("name1", 5, 0, 18, 4, True)
-    enemies["name2"] = Enemy("name2", 5, 0, 16, 3, True)
-    enemies["name3"] = Enemy("name3", 5, 0, 14, 2, True)
-    enemies["Mike"] = Enemy("Mike", 5, 0, 12, 1, True)
-    enemies["Jeff"] = Enemy("Jeff", 5,  0, 10, 4, False)
-    enemies["John"] = Enemy("John", 5,  0, 8, 3, False)
-    enemies["Willy"] = Enemy("Willy", 5, 0, 6, 2, False)
-    enemies["Bob"] = Enemy("Bob", 5,  0, 4, 1, False)
+    #Creating the enemies
+    enemies["Mike"] = Enemy("Mike", 8, 0, 0, True)
+    enemies["John"] = Enemy("John", 6,  0, 0, True)
+    enemies["Willy"] = Enemy("Willy", 4, 0, 0, False)
+    enemies["Bob"] = Enemy("Bob", 2,  0, 0, False)
 
 
 def main():
