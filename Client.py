@@ -36,7 +36,7 @@ class Enemy(Button):
         if not shooting:
             self.model=f"objs/soldier{walk_state}.obj"
         else:
-            pass
+            self.model=f"objs/shooting{walk_state}.obj"
         self.collider = "mesh"
         self.x = x
         self.y = y
@@ -240,10 +240,12 @@ def start():
     window.fullscreen = True
     window.borderless = True
 
-    enemies["Mike"] = Enemy("Mike", 25, 0, 7, 2, False)
-    enemies["John"] = Enemy("John", 8,  0, 5, 1, False)
-    enemies["Willy"] = Enemy("Willy", 14, 0, 3, 3, False)
-    enemies["Bob"] = Enemy("Bob", 5,  0, -9, 1, False)
+    enemies["name1"] = Enemy("name1", 5, 0, 14, 3, True)
+    enemies["name2"] = Enemy("name2", 5, 0, 12, 2, True)
+    enemies["Mike"] = Enemy("Mike", 5, 0, 10, 1, True)
+    enemies["John"] = Enemy("John", 5,  0, 8, 3, False)
+    enemies["Willy"] = Enemy("Willy", 5, 0, 6, 2, False)
+    enemies["Bob"] = Enemy("Bob", 5,  0, 4, 1, False)
 
 
 def main():
