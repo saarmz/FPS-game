@@ -24,17 +24,20 @@ class Bullet(Entity):
             destroy(self)
 
 class Enemy(Button):
-    def __init__(self, name, x, y, z, walk_state) -> None:
+    def __init__(self, name, x, y, z, walk_state, shooting) -> None:
         super().__init__(
             parent=scene,
-            model=f"objs/soldier{walk_state}.obj",
             scale=.07,
             position=(x,y,z),
             color = self.color.tint(1),
             highlight_color = self.color.tint(1),
-            pressed_color = self.color.tint(1),
-            collider = "mesh"
+            pressed_color = self.color.tint(1)
         )
+        if not shooting:
+            self.model=f"objs/soldier{walk_state}.obj"
+        else:
+            pass
+        self.collider = "mesh"
         self.x = x
         self.y = y
         self.z = z
@@ -237,10 +240,10 @@ def start():
     window.fullscreen = True
     window.borderless = True
 
-    enemies["Mike"] = Enemy("Mike", 25, 0, 7, 2)
-    enemies["John"] = Enemy("John", 8,  0, 5, 1)
-    enemies["Willy"] = Enemy("Willy", 14, 0, 3, 3)
-    enemies["Bob"] = Enemy("Bob", 5,  0, -9, 1)
+    enemies["Mike"] = Enemy("Mike", 25, 0, 7, 2, False)
+    enemies["John"] = Enemy("John", 8,  0, 5, 1, False)
+    enemies["Willy"] = Enemy("Willy", 14, 0, 3, 3, False)
+    enemies["Bob"] = Enemy("Bob", 5,  0, -9, 1, False)
 
 
 def main():
