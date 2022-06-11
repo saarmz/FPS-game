@@ -26,10 +26,16 @@ class Bullet(Entity):
 
 class Enemy():
     def __init__(self, name, x, y, z, shooting) -> None:
+        global enemy_animations, enemy_objs
+
         if shooting:
-            enemy=FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), collider="mesh")
+            animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z))
+            enemy_animations[name] = animation
+            enemy_objs[name] = Entity(model="shooting_walking/shooting1.obj", parent=animation, collider="mesh", visible=False)
         else:
-            enemy=FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z), collider="mesh")
+            animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z))
+            enemy_animations[name] = animation
+            enemy_objs[name] = Entity(model="soldier_walking/soldier1.obj", parent=animation, collider="mesh", visible=False)
         self.name = name
         self.walking = False
         # txt = Text(text=name, parent=self, billboard=True)
@@ -42,13 +48,13 @@ class Enemy():
             pass
         else:
             self.walking = True
-            destroy(enemies[self.name])
-            enemies[self.name] = Enemy(self.name, self.x, self.y, self.z, self.walk_state+1)
+            destroy(enemy_objs[self.name])
+            enemy_objs[self.name] = Enemy(self.name, self.x, self.y, self.z, self.walk_state+1)
 
 
-enemies = {} # a list of the other players
+# a dictionary of the other players' animations and objects
+enemy_animations = {}
 enemy_objs = {}
-
 
 
 background_sounds = {
@@ -125,15 +131,17 @@ def muzzle_flash(entity):
     pass
 
 def shoot_check_hit():
-    global enemies
+    global enemy_objs
 
     Bullet(model="sphere", color=color.gold, scale=1, position=my_player.camera_pivot.world_position,
             rotation=my_player.camera_pivot.world_rotation)
-    if len(enemies) > 0:
-        for enemy in enemies:
-            if enemies[enemy].hovered:
-                destroy(enemies[enemy])
-                enemies.pop(enemy)
+    if len(enemy_objs) > 0:
+        for enemy in enemy_objs:
+            if enemy_objs[enemy].hovered:
+                destroy(enemy_objs[enemy])
+                destroy(enemy_animations[enemy])
+                enemy_objs.pop(enemy)
+                enemy_animations.pop(enemy)
                 break
 
 
@@ -231,10 +239,10 @@ def start():
     window.borderless = True
 
     #Creating the enemies
-    enemies["Mike"] = Enemy("Mike", 8, 0, 0, True)
-    enemies["John"] = Enemy("John", 6,  0, 0, True)
-    enemies["Willy"] = Enemy("Willy", 4, 0, 0, False)
-    enemies["Bob"] = Enemy("Bob", 2,  0, 0, False)
+    Enemy("Mike", 8, 0, 0, True)
+    Enemy("John", 6,  0, 0, True)
+    Enemy("Willy", 4, 0, 0, False)
+    Enemy("Bob", 2,  0, 0, False)
 
 
 def main():
