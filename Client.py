@@ -40,8 +40,8 @@ class Enemy():
     def update(self):
         if self.walking:
             curr_time = time.perf_counter()
-            if curr_time - self.last_walk >= 0.2:
-                self.animation.z += 0.2
+            if curr_time - self.last_walk >= 0.01:
+                self.animation.z += 0.03
                 self.last_walk = curr_time
 
     def update_loc(self, x, y, z) -> None:
