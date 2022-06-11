@@ -11,7 +11,7 @@ application.development_mode = False
 app = Ursina() # creating a window
 
 class Bullet(Entity):
-    def __init__(self, speed=20, lifetime=10, **kwargs):
+    def __init__(self, speed=20, lifetime=5, **kwargs):
         super().__init__(**kwargs)
         self.speed = speed
         self.lifetime = lifetime
@@ -35,19 +35,23 @@ class Enemy():
         self.name = name
         self.walking = False
         self.last_walk = 0
+        self.speed = 0.3
         # txt = Text(text=name, parent=self, billboard=True)
 
     def update(self):
         if self.walking:
             curr_time = time.perf_counter()
             if curr_time - self.last_walk >= 0.01:
-                self.animation.z += 0.03
+                self.animation.position += self.obj.forward * self.speed
                 self.last_walk = curr_time
 
     def update_loc(self, x, y, z) -> None:
         self.position = (x, y, z)
     
-    def walk(self, to_walk):
+    def update_rotation(self, rotation) -> None:
+        self.animation.rotation = rotation
+    
+    def walk(self, to_walk) -> None:
         if to_walk and not self.walking:
             self.walking = True
         elif not to_walk and self.walking:
@@ -249,6 +253,7 @@ def start():
 
     enemies["Mike"].walk(True)
     enemies["John"].walk(True)
+    enemies["John"].update_rotation(Vec3(enemies["John"].animation.rotation_x, enemies["John"].animation.rotation_y+40, enemies["John"].animation.rotation_z))
 
 
 def main():
