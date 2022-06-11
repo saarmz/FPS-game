@@ -27,10 +27,10 @@ class Bullet(Entity):
 class Enemy():
     def __init__(self, name, x, y, z, shooting) -> None:
         if shooting:
-            self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z))
+            self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), autoplay=False)
             self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
         else:
-            self.animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z))
+            self.animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z), autoplay=False)
             self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
         self.name = name
         self.walking = False
@@ -54,8 +54,10 @@ class Enemy():
     def walk(self, to_walk) -> None:
         if to_walk and not self.walking:
             self.walking = True
+            self.animation.start()
         elif not to_walk and self.walking:
             self.walking = False
+            self.animation.pause()
 
 
 # a dictionary of the other players
