@@ -40,8 +40,8 @@ class Enemy():
     def update(self):
         if self.walking:
             curr_time = time.perf_counter()
-            if curr_time - self.last_walk >= 1:
-                self.animation.x += 2
+            if curr_time - self.last_walk >= 0.2:
+                self.animation.z += 0.2
                 self.last_walk = curr_time
 
     def update_loc(self, x, y, z) -> None:
@@ -180,7 +180,7 @@ def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running, moving
+    global gun_up, running, moving, enemies
 
     shooting_sounds()
 
@@ -219,6 +219,9 @@ def update():
         moving = False
         running = False
         my_player.speed = walking_speed
+    
+    for enemy in enemies:
+        enemies[enemy].update()
 
 
 def login():
@@ -239,10 +242,13 @@ def start():
     window.borderless = True
 
     #Creating the enemies
-    enemies["Mike"] = Enemy("Mike", 8, 0, 0, True)
-    enemies["John"] = Enemy("John", 6,  0, 0, True)
-    enemies["Willy"] = Enemy("Willy", 4, 0, 0, False)
-    enemies["Bob"] = Enemy("Bob", 2,  0, 0, False)
+    enemies["Bob"] = Enemy("Bob", 8, 0, 0, True)
+    enemies["Willy"] = Enemy("Willy", 6,  0, 0, False)
+    enemies["John"] = Enemy("John", 4, 0, 0, True)
+    enemies["Mike"] = Enemy("Mike", 2,  0, 0, False)
+
+    enemies["Mike"].walk(True)
+    enemies["John"].walk(True)
 
 
 def main():
