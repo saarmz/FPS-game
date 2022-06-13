@@ -1,3 +1,4 @@
+from msilib.schema import Billboard
 from pickle import FALSE
 from pydoc import visiblename
 from turtle import position
@@ -29,14 +30,17 @@ class Enemy():
         if shooting:
             self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), autoplay=False)
             self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
+            self.muzzle_animation = Animation("objs/muzzle_flash.gif", parent=self.animation, y=24, z=24, scale=22, billboard=True)
         else:
             self.animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z), autoplay=False)
             self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
+            self.muzzle_animation = False
         self.name = name
         self.walking = False
         self.last_walk = 0
         self.speed = 0.3
-        # txt = Text(text=name, parent=self, billboard=True)
+        self.shooting = shooting
+        # txt = Text(text=name, parent=self.animation, billboard=True)
 
     def update(self):
         if self.walking:
@@ -51,18 +55,35 @@ class Enemy():
     def update_rotation(self, rotation) -> None:
         self.animation.rotation = rotation
     
-    def walk(self, to_walk) -> None:
+    def update_walk(self, to_walk) -> None:
         if to_walk and not self.walking:
             self.walking = True
             self.animation.start()
         elif not to_walk and self.walking:
             self.walking = False
             self.animation.pause()
+    
+    def update_shooting(self, shoot):
+        if shoot and not self.shooting:
+            pos = self.animation.position
+            destroy(self.animation)
+            destroy(self.obj)
+            destroy(self.muzzle_animation)
+            self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=pos, autoplay=False)
+            self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
+            self.muzzle_animation = Animation("objs/muzzle_flash.gif", parent=self.animation, y=24, z=24, scale=22, billboard=True)
+        elif not shoot and self.shooting:
+            pos = self.animation.position
+            destroy(self.animation)
+            destroy(self.obj)
+            destroy(self.muzzle_animation)
+            self.animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=pos, autoplay=False)
+            self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
+            self.muzzle_animation = False
 
 
 # a dictionary of the other players
 enemies = {}
-
 
 background_sounds = {
     "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
@@ -134,8 +155,6 @@ def stop_shooting():
         m4_sounds[i].stop()
     m4_sounds["M4_ending"].play()
     
-def muzzle_flash(entity):
-    pass
 
 def shoot_check_hit():
     global enemies
@@ -162,7 +181,6 @@ def shooting_sounds():
             shoot_check_hit()
             mouse.position = (mouse.x, mouse.y + .04)
             m4_sound()
-            muzzle_flash(camera.ui)
             mag_size.text = f"mag: {mag}"
         else:
             curr_time = time.perf_counter()
@@ -253,8 +271,8 @@ def start():
     enemies["John"] = Enemy("John", 4, 0, 0, True)
     enemies["Mike"] = Enemy("Mike", 2,  0, 0, False)
 
-    enemies["Mike"].walk(True)
-    enemies["John"].walk(True)
+    enemies["Mike"].update_walk(True)
+    enemies["John"].update_walk(True)
     enemies["John"].update_rotation(Vec3(enemies["John"].animation.rotation_x, enemies["John"].animation.rotation_y+40, enemies["John"].animation.rotation_z))
 
 
