@@ -3,7 +3,7 @@ import socket, threading, traceback, random
 IP = "127.0.0.1"
 PORT = 9320
 
-server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_sock = socket.socket()
 threads = []
 clients = {}
 
@@ -50,9 +50,9 @@ def handle_client(cli_sock, addr):
 def main():
     global server_sock
 
-    server_sock.listen()
-    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_sock.bind((IP, PORT))
+    server_sock.listen()
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # releasing the port
     print("Server running...")
 
     while True:
