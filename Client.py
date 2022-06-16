@@ -187,7 +187,6 @@ def shooting_sounds():
             if curr_time - last_shot >= .085:
                 mag -= 1
                 shoot_check_hit()
-                muzzle_flash(camera.ui)
                 mouse.position = (mouse.x, mouse.y + .04)
                 if mag == 8:
                     m4_sounds["M4_burst"].stop()
@@ -248,14 +247,14 @@ def update():
         enemies[enemy].update()
 
 
-def login():
+def menu():
     """
-    Performs secure TCP log in process
+    Takes care of start menu before the game begins
     """
     pass
 
 def start():
-    login()
+    menu()
     Sky()
     wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
                     texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
