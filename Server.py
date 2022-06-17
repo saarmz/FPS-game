@@ -1,20 +1,28 @@
 import socket, threading, traceback, random
+import time
 
-IP = "127.0.0.1"
+IP = "0.0.0.0"
 PORT = 9320
 
 server_sock = socket.socket()
 threads = []
 clients = {}
 
+def recv(sock):
+    byte_data = sock.recv(1024)
+    if byte_data == b'':
+        return ""
+    else:
+        return byte_data.decode("utf-8")
+
 def diffie_hellman(cli_sock):
-    n = int(cli_sock.recv(1024).decode("utf-8"))
-    g = int(cli_sock.recv(1024).decode("utf-8"))
+    n = 1008001 # relatively large prime number
+    g = 151 # small prime number
     b = random.randint(0, n)
     
     bg = (g**b) % n
     cli_sock.send(str(bg).encode("utf-8"))
-    ag = int(cli_sock.recv(1024).decode("utf-8"))
+    ag = int(cli_sock.recv(2048).decode("utf-8"))
 
     key = (ag**b) % n
     return key
@@ -31,12 +39,12 @@ def handle_client(cli_sock, addr):
     key = diffie_hellman(cli_sock)
     while not finish:
         try:
-            byte_data = cli_sock.recv(1024)
-            if byte_data == b'':
-                print('Seems client disconnected')
+            received = recv(cli_sock)
+            if received != "":
+                data = decrypt(received, key)
+                handle_request(cli_sock, data)
+            else:
                 break
-            data = decrypt(byte_data.decode('utf-8'), key)
-            handle_request(cli_sock, data)
             if finish:
                 break
         except socket.error as err:

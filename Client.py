@@ -1,4 +1,5 @@
 from msilib.schema import Billboard
+from operator import truediv
 from pickle import FALSE
 from pydoc import visiblename
 from turtle import position
@@ -8,6 +9,57 @@ from ursina.prefabs.first_person_controller import FirstPersonController
 import time, threading, socket
 from random import randint
 
+# Global variables used for setting up connection
+tcp_sock = socket.socket()
+PORT = 9320
+key = 0
+
+def recv(sock):
+    byte_data = sock.recv(1024)
+    if byte_data == b'':
+        return ""
+    else:
+        return byte_data.decode("utf-8")
+
+def diffie_hellman(sock):
+    global key
+
+    n = 1008001 # relatively large prime number
+    g = 151 # small prime number
+    a = random.randint(0, n)
+
+    bg = int(sock.recv(2048).decode("utf-8"))
+    ag = (g**a) % n
+    sock.send(f"{str(ag)}".encode("utf-8"))
+
+    key = (bg**a) % n
+    time.sleep(3)
+
+def menu():
+    """
+    Takes care of start menu before the game begins
+    """
+    global server_ip
+
+    connected = False
+    #TODO: change it back to input
+    server_ip = "192.168.1.245"
+    try:
+        tcp_sock.connect((server_ip, PORT))
+        print(f'Connect succeeded {server_ip}:{PORT}')
+        connected = True
+    except:
+        print(f'Error while trying to connect.  Check ip or port -- {server_ip}:{PORT}')
+        return False
+    
+    if connected:
+        diffie_hellman(tcp_sock)
+
+        return True
+
+start = menu()
+if not start:
+    sys.exit()
 application.development_mode = False
 app = Ursina() # creating a window
 
@@ -82,13 +134,11 @@ class Enemy():
             self.muzzle_animation = False
 
 
-# Global variables:
-tcp_socket = socket.socket()
-PORT = 9320
+# Global variables used for the game
 enemies = {} # a dictionary of the other players
 
 background_sounds = {
-    "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
+    "birds_singing": Audio("sounds/birds.mp3", autoplay=False, loop=True, volume=.3)
 }
 
 ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
@@ -248,45 +298,7 @@ def update():
     for enemy in enemies:
         enemies[enemy].update()
 
-def diffie_hellman(sock):
-    g = 1
-    n = 2
-    sock.send(f"{str(n)}~{str(g)}".encode("utf-8"))
-    a = random.randint(0, n)
-    print(f"a = {a}")
-
-    bg = recv1()
-    bg = int(bg)
-    print(f"bg = {bg}")
-    ag = (g**a) % n
-    print(f"ag = {ag}")
-    sock.send(f"{str(ag)}".encode("utf-8"))
-
-    key = (bg**a) % n
-    print(key)
-
-def menu():
-    """
-    Takes care of start menu before the game begins
-    """
-    global server_ip
-
-    connected = False
-    server_ip = input("Please enter the server's IP: ")
-    try:
-        tcp_socket.connect((server_ip, PORT))
-        print(f'Connect succeeded {server_ip}:{PORT}')
-        connected = True
-    except:
-        print(f'Error while trying to connect.  Check ip or port -- {server_ip}:{PORT}')
-    
-    if connected:
-        pass
-
-    
-
 def start():
-    menu()
     Sky()
     wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
                     texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
@@ -308,6 +320,7 @@ def start():
 
 
 def main():
+    background_sounds["birds_singing"].play()
     app.run()
 
 
