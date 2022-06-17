@@ -82,8 +82,10 @@ class Enemy():
             self.muzzle_animation = False
 
 
-# a dictionary of the other players
-enemies = {}
+# Global variables:
+tcp_socket = socket.socket()
+PORT = 9320
+enemies = {} # a dictionary of the other players
 
 background_sounds = {
     "birds_singing": Audio("sounds/birds.mp3", autoplay=True, loop=True, volume=.3)
@@ -246,12 +248,42 @@ def update():
     for enemy in enemies:
         enemies[enemy].update()
 
+def diffie_hellman(sock):
+    g = 1
+    n = 2
+    sock.send(f"{str(n)}~{str(g)}".encode("utf-8"))
+    a = random.randint(0, n)
+    print(f"a = {a}")
+
+    bg = recv1()
+    bg = int(bg)
+    print(f"bg = {bg}")
+    ag = (g**a) % n
+    print(f"ag = {ag}")
+    sock.send(f"{str(ag)}".encode("utf-8"))
+
+    key = (bg**a) % n
+    print(key)
 
 def menu():
     """
     Takes care of start menu before the game begins
     """
-    pass
+    global server_ip
+
+    connected = False
+    server_ip = input("Please enter the server's IP: ")
+    try:
+        tcp_socket.connect((server_ip, PORT))
+        print(f'Connect succeeded {server_ip}:{PORT}')
+        connected = True
+    except:
+        print(f'Error while trying to connect.  Check ip or port -- {server_ip}:{PORT}')
+    
+    if connected:
+        pass
+
+    
 
 def start():
     menu()
