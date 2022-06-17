@@ -11,8 +11,9 @@ from random import randint
 
 # Global variables used for setting up connection
 tcp_sock = socket.socket()
-PORT = 9320
+PORT = 9321
 key = 0
+nickname = ""
 
 def recv(sock):
     byte_data = sock.recv(1024)
@@ -33,13 +34,12 @@ def diffie_hellman(sock):
     sock.send(f"{str(ag)}".encode("utf-8"))
 
     key = (bg**a) % n
-    time.sleep(3)
 
 def menu():
     """
     Takes care of start menu before the game begins
     """
-    global server_ip
+    global server_ip, nickname
 
     connected = False
     #TODO: change it back to input
@@ -54,6 +54,24 @@ def menu():
     
     if connected:
         diffie_hellman(tcp_sock)
+        nickname = "Saar"
+        inp = "T"
+        if inp == "T":
+            lobby = "lob"
+            password = "pas"
+            message = f"NEW~{nickname}~{lobby}~{password}"
+            tcp_sock.send(message.encode("utf-8"))
+
+            input("Press ENTER when everyone's ready to start the game")
+            tcp_sock.send(f"READY~{nickname}~{lobby}~{password}".encode("utf-8"))
+            print(recv(tcp_sock))
+            #TODO: wait for everyone's and everything's locations
+        else:
+            name = input("Please enter the lobby's name: ")
+            password = input("Please enter the lobby's password: ")
+            message = f"JOIN~{nickname}~{name}~{password}"
+            tcp_sock.send(message.encode("utf-8"))
+
 
         return True
 
