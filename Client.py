@@ -17,6 +17,7 @@ lobby = ""
 password = ""
 hp = 100
 threads = {}
+alive = True
 
 def recv():
     global tcp_sock
@@ -78,7 +79,7 @@ def diffie_hellman(sock):
     key = key.to_bytes(32, "little")
 
 def handle_response(sock, data):
-    global lobby, password, hp
+    global lobby, password, hp, alive
     if data == "CREATED":
         return "CREATED"
     elif data == "JOINED":
@@ -90,13 +91,31 @@ def handle_response(sock, data):
         # split 0 - command, 1 - lobby, 2 - player who was hit, 3 - player who shot him
         if splits[2] == nickname:
             if hp <= 20:
-                #TODO: death
-                pass
+                encrypt_send(tcp_sock, f"DEAD~{lobby}~{nickname}~{splits[3]}", True)
+                alive = False
             else:
                 hp -= 20
                 hp_text.text = f"hp: {hp}"
         else:
             pass
+    elif data.startswith("DEAD"):
+        splits = data.split("~")
+        # split 0 - command, 1 - lobby, 2 - player who was killed, 3 - player who killed him
+        if splits[2] != nickname:
+            enemies[splits[2]].update_death(True)
+            #TODO: add point to killer
+    elif data.startswith("LOC"):
+        splits = data.split("~")
+        #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z
+        if splits[1] == nickname:
+            my_player = FirstPersonController(position = (int(splits[2]), int(splits[3]) + 2, int(splits[4])))
+            my_player.cursor.color = color.white
+            walking_speed = my_player.speed
+            alive = True
+            hp = 100
+            hp_text.text = f"hp: {hp}"
+        else:
+            enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False, False)
     elif data.startswith("ERROR"):
         if data == "ERROR~TAKEN":
             lobby = input("Name is taken, please enter a different name: ")
@@ -107,20 +126,12 @@ def handle_response(sock, data):
                     return "CREATED"
         # check wrong password
         elif data[6:] == "password":
-            if command == "JOIN":
-                while True:
-                    password = input("Wrong password, please try again: ")
-                    message = f"JOIN~{nickname}~{lobby}~{password}"
-                    encrypt_send(sock, message, True)
-                    if recv() == "JOINED":
-                        return "JOINED"
-            elif command == "READY":
-                while True:
-                    password = input("Wrong password, please try again: ")
-                    message = f"READY~{nickname}~{lobby}~{password}"
-                    encrypt_send(sock, message, True)
-                    if recv() == "GAMEON":
-                        return "GAMEON"
+            while True:
+                password = input("Wrong password, please try again: ")
+                message = f"JOIN~{nickname}~{lobby}~{password}"
+                encrypt_send(sock, message, True)
+                if recv() == "JOINED":
+                    return "JOINED"
         # check invalid name
         elif data[6:] == "name":
             while True:
@@ -237,7 +248,7 @@ class Enemy():
         self.name = name
         self.speed = 0.3
         self.shooting = shooting
-        # txt = Text(text=name, parent=self.animation, billboard=True)
+        self.dead = dead
 
     def update(self):
         pass
@@ -325,7 +336,7 @@ curr_time = time.perf_counter()
 
 def input(key):
     global mag, mag_size
-    if key == 'r':
+    if key == 'r' and alive:
         mag = 30
         mag_size.text = f"mag: {mag}"
 
@@ -415,44 +426,45 @@ def update():
 
     shooting_sounds()
 
-    #moving the gun while walking    
-    if not shooting:
-        # TODO: send UDP location
-        if held_keys["shift"]:
-            running = True
-            my_player.speed = 2 * walking_speed
-        elif running == True and not held_keys["shift"]:
-            my_player.speed = walking_speed
-        if held_keys['w'] or held_keys['s'] or held_keys['d'] or held_keys['a']:
-            if not moving:
-                moving = True
+    if alive:
+        #moving the gun while walking    
+        if not shooting:
+            # TODO: send UDP location
+            if held_keys["shift"]:
+                running = True
+                my_player.speed = 2 * walking_speed
+            elif running == True and not held_keys["shift"]:
+                my_player.speed = walking_speed
+            if held_keys['w'] or held_keys['s'] or held_keys['d'] or held_keys['a']:
+                if not moving:
+                    moving = True
 
-            if gun.y > -.6 and not gun_up:
-                gun.y -= .01
-                gun.x -= .008
-                gun.rotation = (gun.x - .4, 75 + gun.y * 20, 8)
+                if gun.y > -.6 and not gun_up:
+                    gun.y -= .01
+                    gun.x -= .008
+                    gun.rotation = (gun.x - .4, 75 + gun.y * 20, 8)
 
-            elif gun.y < -.35:
-                gun_up = True
-                gun.y += .008
-                gun.x += .006
-                gun.rotation = (.4 - gun.x, 75 + gun.y * 20, 8)
+                elif gun.y < -.35:
+                    gun_up = True
+                    gun.y += .008
+                    gun.x += .006
+                    gun.rotation = (.4 - gun.x, 75 + gun.y * 20, 8)
+                else:
+                    gun_up = False
+                    gun.x = .439
             else:
-                gun_up = False
-                gun.x = .439
-        else:
+                gun.position = (.4, -.40, -.1)
+                gun.rotation = (0, 75, 8)
+        elif moving:
+            # TODO: send UDP location
             gun.position = (.4, -.40, -.1)
             gun.rotation = (0, 75, 8)
-    elif moving:
-        # TODO: send UDP location
-        gun.position = (.4, -.40, -.1)
-        gun.rotation = (0, 75, 8)
-        moving = False
-        running = False
-        my_player.speed = walking_speed
-    
-    for enemy in enemies:
-        enemies[enemy].update()
+            moving = False
+            running = False
+            my_player.speed = walking_speed
+        
+        for enemy in enemies:
+            enemies[enemy].update()
 
 def get_locations():
     global tcp_sock, walls, my_player, walking_speed

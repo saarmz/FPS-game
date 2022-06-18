@@ -189,6 +189,11 @@ def handle_request(cli_sock, data, key):
         # split 0 - command, 1 - lobby, 2 - player who was hit, 3 - player who shot him
         cli_sock = lobbies[splits[1]].players[splits[2]][0]
         encrypt_send(cli_sock, data, keys[splits[2]])
+    elif data.startswith("DEAD"):
+        splits = data.split("~")
+        # split 0 - command, 1 - lobby, 2 - player who was killed, 3 - player who killed him
+        lobbies[splits[1]].tcp_broadcast(data)
+        lobbies[splits[1]].generate_location(splits[2])
         
 
 def handle_client(cli_sock, addr):
