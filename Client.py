@@ -17,6 +17,7 @@ password = ""
 
 def recv(sock):
     byte_data = sock.recv(1024)
+    print(byte_data)
     if byte_data == b'':
         return ""
     else:
@@ -118,9 +119,6 @@ def handle_response(sock, data, command):
         elif data[6:] == "not_host":
             return "not_host"
 
-def get_locations(sock):
-    pass
-
 def menu():
     """
     Takes care of start menu before the game begins
@@ -159,8 +157,7 @@ def menu():
                 received = recv(tcp_sock)
                 # if game is ready
                 if handle_response(tcp_sock, received, "READY") == "GAMEON":
-                    pass
-                    #TODO: call function that waits for everyone's and everything's locations
+                    return True
                 else:
                     print("Error when attempting to start game")
                     sys.exit()
@@ -177,8 +174,7 @@ def menu():
             # check if there were any errors
             received = recv(tcp_sock)
             if handle_response(tcp_sock, received, "JOIN") == "JOINED":
-                #TODO: call function that waits for everyone's and everything's locations
-                pass
+                return True
             else:
                 print("Unable to join lobby")
                 sys.exit()
@@ -187,7 +183,6 @@ def menu():
             print("Invalid answer, please rerun and try again")
             sys.exit()
 
-        return True
 
 start = menu()
 if not start:
@@ -268,6 +263,7 @@ class Enemy():
 
 # Global variables used for the game
 enemies = {} # a dictionary of the other players
+walls = []
 
 background_sounds = {
     "birds_singing": Audio("sounds/birds.mp3", autoplay=False, loop=True, volume=.3)
@@ -430,20 +426,37 @@ def update():
     for enemy in enemies:
         enemies[enemy].update()
 
+def get_locations():
+    global tcp_sock, walls
+
+    received = recv(tcp_sock)
+    while received != "START":
+        if received.startswith("WALL"):
+            splits = received.split("~")
+            #split 0 - command, 1 - x, 2 - y, 3 - z, 4 - scale_x, 5 - scale_y, 6 - scale_z
+            walls.append(Entity(model="cube", collider="box", position=(int(splits[1]), int(splits[2]), int(splits[3])), scale = (int(splits[4]), int(splits[5]), 
+                        int(splits[6])), rotation=(0, 0, 0), texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0)))
+        received = recv(tcp_sock)
+
 def start():
+    global tcp_sock
+
     Sky()
     window.title = 'My Game'
     window.fullscreen = True
     window.borderless = True
 
-    #TODO: call get locations instead
-    wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (13, 5, 1), rotation=(0, 0, 0),
-                    texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
-    wall_2 = duplicate(wall_1, z=15)
-    wall_3 = duplicate(wall_1, z=25)
+    # getting all the walls' and players' locations
+    get_locations()
+
+
+    # wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (13, 5, 1), rotation=(0, 0, 0),
+    #                 texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
+    # wall_2 = duplicate(wall_1, z=15)
+    # wall_3 = duplicate(wall_1, z=30)
 
     #Creating the enemies
-    enemies["Bob"] = Enemy("Bob", -48, 0, 0, True)
+    # enemies["Bob"] = Enemy("Bob", -48, 0, 0, True)
     # enemies["Willy"] = Enemy("Willy", 6,  0, 0, False)
     # enemies["John"] = Enemy("John", 4, 0, 0, True)
     # enemies["Mike"] = Enemy("Mike", 2,  0, 0, False)

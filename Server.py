@@ -33,9 +33,15 @@ class Lobby():
             tcp_broadcast("GAMEON", self.name)
             print(f"Starting lobby called {self.name}")
             #TODO: send wall's locations
-            
+            tcp_broadcast("WALL~-13~0~0~13~5~1", self.name)
+            time.sleep(3)
+            tcp_broadcast("WALL~-13~0~15~13~5~1", self.name)
+            time.sleep(3)
+            tcp_broadcast("WALL~-13~0~30~13~5~1", self.name)
+            time.sleep(3)
             # generating and sending player locations
             self.generate_locations()
+            tcp_broadcast("START", self.name)
     
 
 def encrypt_send(sock, text, key):
@@ -48,6 +54,9 @@ def encrypt_send(sock, text, key):
     result = json.dumps({'nonce':nonce, 'ciphertext':ct})
     #send it to the client
     sock.send(result.encode("utf-8"))
+
+    #TODO: remove print after debug
+    print(result)
 
 def decrypt(data, key):
     try:
@@ -77,6 +86,7 @@ def recv(sock):
 
 def tcp_broadcast(message, lobby):
     global lobbies
+    print(f"broadcasting - {message}")
     for player in lobbies[lobby].players:
         encrypt_send(lobbies[lobby].players[player][0], message, keys[player])
 
