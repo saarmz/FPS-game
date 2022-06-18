@@ -15,6 +15,7 @@ key = 0
 nickname = ""
 lobby = ""
 password = ""
+hp = 100
 
 def recv(sock):
     byte_data = recv_by_size(sock)
@@ -77,6 +78,17 @@ def handle_response(sock, data, command):
         return "JOINED"
     elif data == "GAMEON":
         return "GAMEON"
+    elif data.startswith("HIT"):
+        splits = data.split("~")
+        # split 0 - command, 1 - player who was hit, 2 - player who shot him
+        if splits[1] == nickname:
+            if hp <= 20:
+                #TODO: death
+                pass
+            else:
+                hp -= 20
+        else:
+            pass
     elif data.startswith("ERROR"):
         if data == "ERROR~TAKEN":
             lobby = input("Name is taken, please enter a different name: ")
@@ -301,6 +313,7 @@ m4_sounds = {
     }
 mag = 30
 mag_size = Text(f"mag: {mag}", origin=(7, 10))
+hp_text = Text(f"hp: {hp}", origin=(7, 15))
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
 
