@@ -16,7 +16,7 @@ lobby = ""
 password = ""
 
 def recv(sock):
-    byte_data = sock.recv(1024)
+    byte_data = sock.recv(256)
     print(byte_data)
     if byte_data == b'':
         return ""
@@ -429,14 +429,15 @@ def update():
 def get_locations():
     global tcp_sock, walls
 
-    received = recv(tcp_sock)
+    received = None
     while received != "START":
+        received = recv(tcp_sock)
         if received.startswith("WALL"):
             splits = received.split("~")
             #split 0 - command, 1 - x, 2 - y, 3 - z, 4 - scale_x, 5 - scale_y, 6 - scale_z
             walls.append(Entity(model="cube", collider="box", position=(int(splits[1]), int(splits[2]), int(splits[3])), scale = (int(splits[4]), int(splits[5]), 
                         int(splits[6])), rotation=(0, 0, 0), texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0)))
-        received = recv(tcp_sock)
+            encrypt_send(tcp_sock, received)
 
 def start():
     global tcp_sock

@@ -22,23 +22,39 @@ class Lobby():
 
     def add_player(self, name, player_sock):
         self.players[name] = [player_sock]
-    
+
+    def broadcast_wait(self, message):
+        print(f"broadcasting with response- {message}")
+        for player in self.players:
+            received = None
+            while received != message:
+                encrypt_send(self.players[player][0], message, keys[player])
+                received = recv_decrypted(self.players[player][0], keys[player])
+
     def generate_locations(self):
         #TODO: generate locations that don't collide with walls
         pass
+
+    def send_walls(self):
+        #sending the walls' locations
+        #wall number 1
+        message = "WALL~-13~0~0~13~5~1"
+        self.broadcast_wait(message)
+        #wall number 2
+        message = "WALL~-13~0~15~13~5~1"
+        self.broadcast_wait(message)
+        #wall number 3
+        message = "WALL~-13~0~30~13~5~1"
+        self.broadcast_wait(message)
+        
 
     def ready(self):
         if not self.playing:
             self.playing = True
             tcp_broadcast("GAMEON", self.name)
             print(f"Starting lobby called {self.name}")
-            #TODO: send wall's locations
-            tcp_broadcast("WALL~-13~0~0~13~5~1", self.name)
-            time.sleep(3)
-            tcp_broadcast("WALL~-13~0~15~13~5~1", self.name)
-            time.sleep(3)
-            tcp_broadcast("WALL~-13~0~30~13~5~1", self.name)
-            time.sleep(3)
+            #sending the walls' locations
+            self.send_walls()
             # generating and sending player locations
             self.generate_locations()
             tcp_broadcast("START", self.name)
@@ -78,11 +94,18 @@ def decrypt(data, key):
         print("Incorrect decryption")
 
 def recv(sock):
-    byte_data = sock.recv(1024)
+    byte_data = sock.recv(256)
     if byte_data == b'':
         return ""
     else:
         return byte_data.decode("utf-8")
+
+def recv_decrypted(sock, key):
+    byte_data = sock.recv(256)
+    if byte_data == b'':
+        return ""
+    else:
+        return decrypt(byte_data, key)
 
 def tcp_broadcast(message, lobby):
     global lobbies
