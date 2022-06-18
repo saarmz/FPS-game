@@ -39,8 +39,8 @@ def encrypt_send(sock, text, key):
     nonce = b64encode(cipher.nonce).decode("utf-8")
     ct = b64encode(ciphertext).decode("utf-8")
     result = json.dumps({'nonce':nonce, 'ciphertext':ct})
-
-    return result
+    #send it to the client
+    sock.send(result.encode("utf-8"))
 
 def decrypt(data, key):
     try:
@@ -51,6 +51,10 @@ def decrypt(data, key):
         # decrypt
         cipher = ChaCha20.new(key=key, nonce=nonce)
         text = cipher.decrypt(ciphertext).decode("utf-8")
+
+        #TODO: remove print after debugging
+        print(f"received - {text}")
+
 
         return text
 
@@ -67,7 +71,6 @@ def recv(sock):
 def tcp_broadcast(message, lobby):
     global lobbies
     for player in lobbies[lobby].players:
-        print(f"key = {keys[player]}")
         encrypt_send(lobbies[lobby].players[player][0], message, keys[player])
 
 def diffie_hellman(cli_sock):
@@ -89,10 +92,14 @@ def handle_request(cli_sock, data, key):
     if data.startswith("NEW"):
         # Create a new lobby
         splits = data.split("~")
-        # split 0 - request, 1 - player's nickname, 2 - lobby name, 3 - password
-        lobbies[splits[2]] = Lobby(splits[2], splits[3], splits[1], cli_sock)
-        print(f"Created a new lobby called {splits[2]}")
         keys[splits[1]] = key
+        # split 0 - request, 1 - player's nickname, 2 - lobby name, 3 - password
+        if splits[2] not in lobbies:
+            lobbies[splits[2]] = Lobby(splits[2], splits[3], splits[1], cli_sock)
+            print(f"Created a new lobby called {splits[2]}")
+            encrypt_send(cli_sock, "CREATED")
+        else:
+            encrypt_send(cli_sock, "ERROR~TAKEN")
 
     elif data.startswith("JOIN"):
         # Join a lobby
@@ -103,12 +110,13 @@ def handle_request(cli_sock, data, key):
             if splits[3] == lobbies[splits[2]].password:
                 lobbies[splits[2]].add_player(splits[1], cli_sock)
                 print(f"{splits[1]} joined the lobby called {splits[2]}")
+                encrypt_send(cli_sock, "JOINED", key)
             else:
                 #return wrong password message
-                encrypt_send(cli_sock, "ERROR~lobby_password", key)
+                encrypt_send(cli_sock, "ERROR~password", key)
         else:
             #return wrong lobby name message
-            encrypt_send(cli_sock, "ERROR~lobby_name", key)
+            encrypt_send(cli_sock, "ERROR~name", key)
     
     elif data.startswith("READY"):
         # host wants to start the game

@@ -18,6 +18,7 @@ def recv(sock):
     if byte_data == b'':
         return ""
     else:
+        print(f"received - {byte_data}")
         return decrypt(byte_data)
 
 def encrypt_send(sock, text):
@@ -42,7 +43,7 @@ def decrypt(data):
         # decrypt
         cipher = ChaCha20.new(key=key, nonce=nonce)
         text = cipher.decrypt(ciphertext).decode("utf-8")
-        
+
         return text
 
     except (ValueError, KeyError):
@@ -92,17 +93,58 @@ def menu():
             password = "pas"
             message = f"NEW~{nickname}~{lobby}~{password}"
             encrypt_send(tcp_sock, message)
+            # try again until the name is good
+            created = False
+            if recv(tcp_sock) == "ERROR~TAKEN":
+                while True:
+                    lobby = input("Name is taken, please enter a different name: ")
+                    message = f"READY~{nickname}~{lobby}~{password}"
+                    encrypt_send(tcp_sock, message)
+                    if recv(tcp_sock) == "CREATED":
+                        created = True
+                        break
+            # lobby was created          
+            if recv(tcp_sock) == "CREATED" or created:
+                input("Press ENTER when everyone's ready to start the game")
+                message = f"READY~{nickname}~{lobby}~{password}"
+                encrypt_send(tcp_sock, message)
+                print(recv(tcp_sock))
+                #TODO: call function that waits for everyone's and everything's locations
 
-            input("Press ENTER when everyone's ready to start the game")
-            encrypt_send(tcp_sock, f"READY~{nickname}~{lobby}~{password}")
-            print(recv(tcp_sock))
-            #TODO: wait for everyone's and everything's locations
-        else:
+        if inp == "F":
             name = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
             message = f"JOIN~{nickname}~{name}~{password}"
             encrypt_send(tcp_sock, message)
-
+            joined = False
+            # check if there were any errors
+            received = recv(tcp_sock)
+            if received.startswith("ERROR"):
+                # check wrong password
+                if received[6:] == "password":
+                    while True:
+                        password = input("Wrong password, please try again: ")
+                        message = f"READY~{nickname}~{lobby}~{password}"
+                        encrypt_send(tcp_sock, message)
+                        if recv(tcp_sock) == "JOINED":
+                            joined = True
+                            break
+                # check invalid name
+                elif received[6:] == "name":
+                    while True:
+                        password = input("Invalid name, please try again: ")
+                        message = f"READY~{nickname}~{lobby}~{password}"
+                        encrypt_send(tcp_sock, message)
+                        if recv(tcp_sock) == "JOINED":
+                            joined = True
+                            break
+            if received == "JOINED" or joined:
+                #TODO: call function that waits for everyone's and everything's locations
+                pass
+        
+        else:
+            print("invalid answer, please rerun and try again")
+            sys.exit()
 
         return True
 
