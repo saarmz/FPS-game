@@ -12,6 +12,8 @@ tcp_sock = socket.socket()
 PORT = 9321
 key = 0
 nickname = ""
+lobby = ""
+password = ""
 
 def recv(sock):
     byte_data = sock.recv(1024)
@@ -65,7 +67,8 @@ def diffie_hellman(sock):
     key = (bg**a) % n
     key = key.to_bytes(32, "little")
 
-def handle_response(sock, data, command, nickname, password):
+def handle_response(sock, data, command):
+    global lobby, password
     if data == "CREATED":
         return "CREATED"
     elif data == "JOINED":
@@ -122,7 +125,7 @@ def menu():
     """
     Takes care of start menu before the game begins
     """
-    global server_ip, nickname, tcp_sock
+    global server_ip, nickname, tcp_sock, lobby, password
 
     connected = False
     #TODO: change it back to input
@@ -149,13 +152,13 @@ def menu():
             created = False
             received = recv(tcp_sock)
             # lobby was created
-            if handle_response(tcp_sock, received, "NEW", nickname, password) == "CREATED":
+            if handle_response(tcp_sock, received, "NEW") == "CREATED":
                 input("Press ENTER when everyone's ready to start the game")
                 message = f"READY~{nickname}~{lobby}~{password}"
                 encrypt_send(tcp_sock, message)
                 received = recv(tcp_sock)
                 # if game is ready
-                if handle_response(tcp_sock, received, "READY", nickname, password) == "GAMEON":
+                if handle_response(tcp_sock, received, "READY") == "GAMEON":
                     pass
                     #TODO: call function that waits for everyone's and everything's locations
                 else:
@@ -173,7 +176,7 @@ def menu():
             joined = False
             # check if there were any errors
             received = recv(tcp_sock)
-            if handle_response(tcp_sock, received, "JOIN", nickname, password) == "JOINED":
+            if handle_response(tcp_sock, received, "JOIN") == "JOINED":
                 #TODO: call function that waits for everyone's and everything's locations
                 pass
             else:
@@ -434,20 +437,20 @@ def start():
     window.borderless = True
 
     #TODO: call get locations instead
-    wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
+    wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (13, 5, 1), rotation=(0, 0, 0),
                     texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
-    wall_2 = duplicate(wall_1, z=5)
-    wall_3 = duplicate(wall_1, z=10)
+    wall_2 = duplicate(wall_1, z=15)
+    wall_3 = duplicate(wall_1, z=25)
 
     #Creating the enemies
-    enemies["Bob"] = Enemy("Bob", 8, 0, 0, True)
-    enemies["Willy"] = Enemy("Willy", 6,  0, 0, False)
-    enemies["John"] = Enemy("John", 4, 0, 0, True)
-    enemies["Mike"] = Enemy("Mike", 2,  0, 0, False)
+    enemies["Bob"] = Enemy("Bob", -48, 0, 0, True)
+    # enemies["Willy"] = Enemy("Willy", 6,  0, 0, False)
+    # enemies["John"] = Enemy("John", 4, 0, 0, True)
+    # enemies["Mike"] = Enemy("Mike", 2,  0, 0, False)
 
-    enemies["Mike"].update_walk(True)
-    enemies["John"].update_walk(True)
-    enemies["John"].update_rotation(Vec3(enemies["John"].animation.rotation_x, enemies["John"].animation.rotation_y+40, enemies["John"].animation.rotation_z))
+    # enemies["Mike"].update_walk(True)
+    # enemies["John"].update_walk(True)
+    # enemies["John"].update_rotation(Vec3(enemies["John"].animation.rotation_x, enemies["John"].animation.rotation_y+40, enemies["John"].animation.rotation_z))
 
 
 def main():

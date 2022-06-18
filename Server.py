@@ -23,12 +23,19 @@ class Lobby():
     def add_player(self, name, player_sock):
         self.players[name] = [player_sock]
     
+    def generate_locations(self):
+        #TODO: generate locations that don't collide with walls
+        pass
+
     def ready(self):
         if not self.playing:
             self.playing = True
             tcp_broadcast("GAMEON", self.name)
             print(f"Starting lobby called {self.name}")
-            #TODO: send all player's and wall's locations
+            #TODO: send wall's locations
+            
+            # generating and sending player locations
+            self.generate_locations()
     
 
 def encrypt_send(sock, text, key):
