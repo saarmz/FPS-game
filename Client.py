@@ -2,6 +2,7 @@ from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 import time, threading, socket
 from random import randint
+from tcp_by_size import send_with_size, recv_by_size
 # encryption imports:
 import json
 from base64 import b64encode, b64decode
@@ -16,7 +17,7 @@ lobby = ""
 password = ""
 
 def recv(sock):
-    byte_data = sock.recv(256)
+    byte_data = recv_by_size(sock)
     print(byte_data)
     if byte_data == b'':
         return ""
@@ -34,7 +35,7 @@ def encrypt_send(sock, text):
     ct = b64encode(ciphertext).decode("utf-8")
     result = json.dumps({'nonce':nonce, 'ciphertext':ct})
     # send the result to the server
-    sock.send(result.encode("utf-8"))
+    send_with_size(sock, result)
 
 def decrypt(data):
     try:
@@ -61,9 +62,9 @@ def diffie_hellman(sock):
     g = 151 # small prime number
     a = random.randint(0, n)
 
-    bg = int(sock.recv(2048).decode("utf-8"))
+    bg = int(recv_by_size(sock).decode("utf-8"))
     ag = (g**a) % n
-    sock.send(f"{str(ag)}".encode("utf-8"))
+    send_with_size(sock, str(ag))
 
     key = (bg**a) % n
     key = key.to_bytes(32, "little")
@@ -139,11 +140,11 @@ def menu():
     if connected:
         diffie_hellman(tcp_sock)
 
-        nickname = "Saar"
-        inp = "T"
+        nickname = input("Please enter your nickname: ")
+        inp = input("Enter T to create a new lobby\nor enter F to join a lobby: ")
         if inp == "T":
-            lobby = "lob"
-            password = "pas"
+            lobby = input("Please enter the lobby's name: ")
+            password = input("Please enter the lobby's password: ")
             message = f"NEW~{nickname}~{lobby}~{password}"
             encrypt_send(tcp_sock, message)
             # try again until the name is good
@@ -156,7 +157,7 @@ def menu():
                 encrypt_send(tcp_sock, message)
                 received = recv(tcp_sock)
                 # if game is ready
-                if handle_response(tcp_sock, received, "READY") == "GAMEON":
+                if received == "GAMEON":
                     return True
                 else:
                     print("Error when attempting to start game")
@@ -174,7 +175,13 @@ def menu():
             # check if there were any errors
             received = recv(tcp_sock)
             if handle_response(tcp_sock, received, "JOIN") == "JOINED":
-                return True
+                received = recv(tcp_sock)
+                # if game is ready
+                if handle_response(tcp_sock, received, "READY") == "GAMEON":
+                    return True
+                else:
+                    print("Error when attempting to start game")
+                    sys.exit()
             else:
                 print("Unable to join lobby")
                 sys.exit()
@@ -434,9 +441,9 @@ def get_locations():
         if received.startswith("WALL"):
             splits = received.split("~")
             #split 0 - command, 1 - x, 2 - y, 3 - z, 4 - scale_x, 5 - scale_y, 6 - scale_z
+            print("first wall")
             walls.append(Entity(model="cube", collider="box", position=(int(splits[1]), int(splits[2]), int(splits[3])), scale = (int(splits[4]), int(splits[5]), 
                         int(splits[6])), rotation=(0, 0, 0), texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0)))
-            encrypt_send(tcp_sock, received)
         elif received.startswith("LOC"):
             splits = received.split("~")
             #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z
@@ -444,10 +451,8 @@ def get_locations():
                 my_player = FirstPersonController(position = (int(splits[2]), int(splits[3]) + 2, int(splits[4])))
                 my_player.cursor.color = color.white
                 walking_speed = my_player.speed
-                encrypt_send(tcp_sock, received)
             else:
                 enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False)
-                encrypt_send(tcp_sock, received)
 
 
 def start():

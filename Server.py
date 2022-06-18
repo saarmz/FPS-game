@@ -1,4 +1,5 @@
 import socket, threading, traceback, random, time
+from tcp_by_size import send_with_size, recv_by_size
 # encryption imports:
 import json
 from base64 import b64encode, b64decode
@@ -25,13 +26,10 @@ class Lobby():
     def add_player(self, name, player_sock):
         self.players[name] = [player_sock]
 
-    def broadcast_wait(self, message):
-        print(f"broadcasting with response- {message}")
+    def tcp_broadcast(self, message):
+        print(f"broadcasting - {message}")
         for player in self.players:
-            received = None
-            while received != message:
-                encrypt_send(self.players[player][0], message, keys[player])
-                received = recv_decrypted(self.players[player][0], keys[player])
+            encrypt_send(self.players[player][0], message, keys[player])
 
     def generate_locations(self):
         #TODO: generate locations that don't collide with walls
@@ -54,36 +52,34 @@ class Lobby():
                             wrong = False
                     else:
                         wrong = False
-            self.broadcast_wait(f"LOC~{player}~{x}~0~{z}")
+            self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}")
                 
-                
-
     def send_walls(self):
         #sending the walls' locations
         #wall number 1
         self.walls["wall1"] = [13, 0, 0, 13, 5, 1]
         message = "WALL~-13~0~0~13~5~1"
-        self.broadcast_wait(message)
+        self.tcp_broadcast(message)
         #wall number 2
         self.walls["wall1"] = [13, 0, 15, 13, 5, 1]
         message = "WALL~-13~0~15~13~5~1"
-        self.broadcast_wait(message)
+        self.tcp_broadcast(message)
         #wall number 3
         self.walls["wall1"] = [13, 0, 30, 13, 5, 1]
         message = "WALL~-13~0~30~13~5~1"
-        self.broadcast_wait(message)
+        self.tcp_broadcast(message)
         
 
     def ready(self):
         if not self.playing:
             self.playing = True
-            tcp_broadcast("GAMEON", self.name)
+            self.tcp_broadcast("GAMEON")
             print(f"Starting lobby called {self.name}")
             #sending the walls' locations
             self.send_walls()
             # generating and sending player locations
             self.generate_locations()
-            tcp_broadcast("START", self.name)
+            self.tcp_broadcast("START")
     
 
 def encrypt_send(sock, text, key):
@@ -95,7 +91,7 @@ def encrypt_send(sock, text, key):
     ct = b64encode(ciphertext).decode("utf-8")
     result = json.dumps({'nonce':nonce, 'ciphertext':ct})
     #send it to the client
-    sock.send(result.encode("utf-8"))
+    send_with_size(sock, result)
 
     #TODO: remove print after debug
     print(result)
@@ -119,25 +115,13 @@ def decrypt(data, key):
     except (ValueError, KeyError):
         print("Incorrect decryption")
 
-def recv(sock):
-    byte_data = sock.recv(256)
-    if byte_data == b'':
-        return ""
-    else:
-        return byte_data.decode("utf-8")
 
 def recv_decrypted(sock, key):
-    byte_data = sock.recv(256)
+    byte_data = recv_by_size(sock)
     if byte_data == b'':
         return ""
     else:
         return decrypt(byte_data, key)
-
-def tcp_broadcast(message, lobby):
-    global lobbies
-    print(f"broadcasting - {message}")
-    for player in lobbies[lobby].players:
-        encrypt_send(lobbies[lobby].players[player][0], message, keys[player])
 
 def diffie_hellman(cli_sock):
     n = 1008001 # relatively large prime number
@@ -145,8 +129,8 @@ def diffie_hellman(cli_sock):
     b = random.randint(0, n)
     
     bg = (g**b) % n
-    cli_sock.send(str(bg).encode("utf-8"))
-    ag = int(cli_sock.recv(2048).decode("utf-8"))
+    send_with_size(cli_sock, str(bg))
+    ag = int(recv_by_size(cli_sock).decode("utf-8"))
 
     key = (ag**b) % n
     return key.to_bytes(32, "little")
@@ -208,8 +192,8 @@ def handle_client(cli_sock, addr):
     key = diffie_hellman(cli_sock)
     while not finish:
         try:
-            data = recv(cli_sock)
-            print(f"received - {data}")
+            data = recv_by_size(cli_sock)
+            print(f"first receive - {data}")
             if data != "":
                 message = decrypt(data, key)
                 handle_request(cli_sock, message, key)
