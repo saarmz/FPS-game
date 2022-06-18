@@ -3,6 +3,7 @@ import socket, threading, traceback, random, time
 import json
 from base64 import b64encode, b64decode
 from Crypto.Cipher import ChaCha20
+from random import randint
 
 IP = "0.0.0.0"
 PORT = 9321
@@ -19,6 +20,7 @@ class Lobby():
         self.host = host
         self.players = {host : [host_sock]}
         self.playing = False
+        self.walls = {}
 
     def add_player(self, name, player_sock):
         self.players[name] = [player_sock]
@@ -33,17 +35,41 @@ class Lobby():
 
     def generate_locations(self):
         #TODO: generate locations that don't collide with walls
-        pass
+        for player in self.players:
+            #continues when correct spot was picked in each axis
+            x = randint(-48, 48)
+            z = randint(-48, 48)
+            wrong = True
+            while wrong:
+                for wall in self.walls:
+                    #if in x boundaries
+                    if x + self.walls[wall][3] > self.walls[wall][0] and x - self.walls[wall][3] < self.walls[wall][0]:
+                        #if in z boundaries
+                        if z + self.walls[wall][5] > self.walls[wall][2] and z - self.walls[wall][5] < self.walls[wall][2]:
+                            x = randint(-48, 48)
+                            z = randint(-48, 48)
+                            wrong = True
+                            break
+                        else:
+                            wrong = False
+                    else:
+                        wrong = False
+            self.broadcast_wait(f"LOC~{player}~{x}~0~{z}")
+                
+                
 
     def send_walls(self):
         #sending the walls' locations
         #wall number 1
+        self.walls["wall1"] = [13, 0, 0, 13, 5, 1]
         message = "WALL~-13~0~0~13~5~1"
         self.broadcast_wait(message)
         #wall number 2
+        self.walls["wall1"] = [13, 0, 15, 13, 5, 1]
         message = "WALL~-13~0~15~13~5~1"
         self.broadcast_wait(message)
         #wall number 3
+        self.walls["wall1"] = [13, 0, 30, 13, 5, 1]
         message = "WALL~-13~0~30~13~5~1"
         self.broadcast_wait(message)
         

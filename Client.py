@@ -271,9 +271,8 @@ background_sounds = {
 
 ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
                 texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
-my_player = FirstPersonController(position = (0, 2, 0)) # this client's player
-my_player.cursor.color = color.white
-walking_speed = my_player.speed
+my_player = None # this client's player
+walking_speed = None
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
             rotation=(0, 75, 8))
@@ -427,7 +426,7 @@ def update():
         enemies[enemy].update()
 
 def get_locations():
-    global tcp_sock, walls
+    global tcp_sock, walls, my_player, walking_speed
 
     received = None
     while received != "START":
@@ -438,6 +437,18 @@ def get_locations():
             walls.append(Entity(model="cube", collider="box", position=(int(splits[1]), int(splits[2]), int(splits[3])), scale = (int(splits[4]), int(splits[5]), 
                         int(splits[6])), rotation=(0, 0, 0), texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0)))
             encrypt_send(tcp_sock, received)
+        elif received.startswith("LOC"):
+            splits = received.split("~")
+            #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z
+            if splits[1] == nickname:
+                my_player = FirstPersonController(position = (int(splits[2]), int(splits[3]) + 2, int(splits[4])))
+                my_player.cursor.color = color.white
+                walking_speed = my_player.speed
+                encrypt_send(tcp_sock, received)
+            else:
+                enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False)
+                encrypt_send(tcp_sock, received)
+
 
 def start():
     global tcp_sock
