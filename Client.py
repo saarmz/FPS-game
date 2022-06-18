@@ -1,13 +1,11 @@
-from msilib.schema import Billboard
-from operator import truediv
-from pickle import FALSE
-from pydoc import visiblename
-from turtle import position
-from unittest import runner
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 import time, threading, socket
 from random import randint
+# encryption imports:
+import json
+from base64 import b64encode, b64decode
+from Crypto.Cipher import ChaCha20
 
 # Global variables used for setting up connection
 tcp_sock = socket.socket()
@@ -20,7 +18,35 @@ def recv(sock):
     if byte_data == b'':
         return ""
     else:
-        return byte_data.decode("utf-8")
+        return decrypt(byte_data)
+
+def encrypt_send(sock, text):
+    global key
+
+    #encrypt
+    cipher = ChaCha20.new(key=key)
+    ciphertext = cipher.encrypt(text.encode("utf-8"))
+    # get the nonce and text and build message
+    nonce = b64encode(cipher.nonce).decode("utf-8")
+    ct = b64encode(ciphertext).decode("utf-8")
+    result = json.dumps({'nonce':nonce, 'ciphertext':ct})
+    # send the result to the server
+    sock.send(result.encode("utf-8"))
+
+def decrypt(data):
+    try:
+        # split dictionary to ciphertext and nonce
+        b64 = json.loads(data)
+        nonce = b64decode(b64['nonce'])
+        ciphertext = b64decode(b64['ciphertext'])
+        # decrypt
+        cipher = ChaCha20.new(key=key, nonce=nonce)
+        text = cipher.decrypt(ciphertext).decode("utf-8")
+        
+        return text
+
+    except (ValueError, KeyError):
+        print("Incorrect decryption")
 
 def diffie_hellman(sock):
     global key
@@ -34,6 +60,10 @@ def diffie_hellman(sock):
     sock.send(f"{str(ag)}".encode("utf-8"))
 
     key = (bg**a) % n
+    key = key.to_bytes(32, "little")
+
+def handle_response(sock, data):
+    pass
 
 def menu():
     """
@@ -54,23 +84,24 @@ def menu():
     
     if connected:
         diffie_hellman(tcp_sock)
+
         nickname = "Saar"
         inp = "T"
         if inp == "T":
             lobby = "lob"
             password = "pas"
             message = f"NEW~{nickname}~{lobby}~{password}"
-            tcp_sock.send(message.encode("utf-8"))
+            encrypt_send(tcp_sock, message)
 
             input("Press ENTER when everyone's ready to start the game")
-            tcp_sock.send(f"READY~{nickname}~{lobby}~{password}".encode("utf-8"))
+            encrypt_send(tcp_sock, f"READY~{nickname}~{lobby}~{password}")
             print(recv(tcp_sock))
             #TODO: wait for everyone's and everything's locations
         else:
             name = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
             message = f"JOIN~{nickname}~{name}~{password}"
-            tcp_sock.send(message.encode("utf-8"))
+            encrypt_send(tcp_sock, message)
 
 
         return True

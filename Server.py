@@ -1,12 +1,15 @@
-import socket, threading, traceback, random
-import time
+import socket, threading, traceback, random, time
+# encryption imports:
+import json
+from base64 import b64encode, b64decode
+from Crypto.Cipher import ChaCha20
 
 IP = "0.0.0.0"
 PORT = 9321
 
 server_sock = socket.socket()
 threads = []
-clients = {}
+keys = {}
 lobbies = {}
 
 class Lobby():
@@ -24,22 +27,48 @@ class Lobby():
         if not self.playing:
             self.playing = True
             tcp_broadcast("GAMEON", self.name)
+            print(f"Starting lobby called {self.name}")
             #TODO: send all player's and wall's locations
     
+
+def encrypt_send(sock, text, key):
+    #encrypt
+    cipher = ChaCha20.new(key=key)
+    ciphertext = cipher.encrypt(text.encode("utf-8"))
+    # get the nonce and text and build message
+    nonce = b64encode(cipher.nonce).decode("utf-8")
+    ct = b64encode(ciphertext).decode("utf-8")
+    result = json.dumps({'nonce':nonce, 'ciphertext':ct})
+
+    return result
+
+def decrypt(data, key):
+    try:
+        # split dictionary to ciphertext and nonce
+        b64 = json.loads(data)
+        nonce = b64decode(b64['nonce'])
+        ciphertext = b64decode(b64['ciphertext'])
+        # decrypt
+        cipher = ChaCha20.new(key=key, nonce=nonce)
+        text = cipher.decrypt(ciphertext).decode("utf-8")
+
+        return text
+
+    except (ValueError, KeyError):
+        print("Incorrect decryption")
 
 def recv(sock):
     byte_data = sock.recv(1024)
     if byte_data == b'':
         return ""
     else:
-        #TODO: delete print line
-        print(f"received: {byte_data.decode('utf-8')}")
         return byte_data.decode("utf-8")
 
 def tcp_broadcast(message, lobby):
     global lobbies
     for player in lobbies[lobby].players:
-        lobbies[lobby].players[player][0].send(message.encode("utf-8"))
+        print(f"key = {keys[player]}")
+        encrypt_send(lobbies[lobby].players[player][0], message, keys[player])
 
 def diffie_hellman(cli_sock):
     n = 1008001 # relatively large prime number
@@ -51,12 +80,10 @@ def diffie_hellman(cli_sock):
     ag = int(cli_sock.recv(2048).decode("utf-8"))
 
     key = (ag**b) % n
-    return key
+    return key.to_bytes(32, "little")
 
-def decrypt(data, key):
-    pass
 
-def handle_request(cli_sock, data):
+def handle_request(cli_sock, data, key):
     global lobbies
 
     if data.startswith("NEW"):
@@ -65,21 +92,23 @@ def handle_request(cli_sock, data):
         # split 0 - request, 1 - player's nickname, 2 - lobby name, 3 - password
         lobbies[splits[2]] = Lobby(splits[2], splits[3], splits[1], cli_sock)
         print(f"Created a new lobby called {splits[2]}")
+        keys[splits[1]] = key
 
     elif data.startswith("JOIN"):
         # Join a lobby
         splits = data.split("~")
         # split 0 - request, 1 - player's nickname, 2 - lobby name, 3 - password
+        keys[splits[1]] = key
         if splits[2] in lobbies:
             if splits[3] == lobbies[splits[2]].password:
                 lobbies[splits[2]].add_player(splits[1], cli_sock)
                 print(f"{splits[1]} joined the lobby called {splits[2]}")
             else:
-                #TODO: return wrong password message
-                pass
+                #return wrong password message
+                encrypt_send(cli_sock, "ERROR~lobby_password", key)
         else:
-            #TODO: return wrong lobby name message
-            pass
+            #return wrong lobby name message
+            encrypt_send(cli_sock, "ERROR~lobby_name", key)
     
     elif data.startswith("READY"):
         # host wants to start the game
@@ -106,9 +135,10 @@ def handle_client(cli_sock, addr):
     while not finish:
         try:
             data = recv(cli_sock)
+            print(f"received - {data}")
             if data != "":
-                # data = decrypt(data, key)
-                handle_request(cli_sock, data)
+                message = decrypt(data, key)
+                handle_request(cli_sock, message, key)
             else:
                 break
             if finish:
