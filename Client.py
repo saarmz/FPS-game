@@ -108,7 +108,13 @@ def menu():
                 input("Press ENTER when everyone's ready to start the game")
                 message = f"READY~{nickname}~{lobby}~{password}"
                 encrypt_send(tcp_sock, message)
-                print(recv(tcp_sock))
+                received = recv(tcp_sock)
+                starting = False
+                # check if there were errors
+                if received.startswith("ERROR"):
+                    pass
+                if received == "GAMEON" or starting:
+                    pass
                 #TODO: call function that waits for everyone's and everything's locations
 
         if inp == "F":
