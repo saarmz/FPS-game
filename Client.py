@@ -18,7 +18,6 @@ def recv(sock):
     if byte_data == b'':
         return ""
     else:
-        print(f"received - {byte_data}")
         return decrypt(byte_data)
 
 def encrypt_send(sock, text):
@@ -44,6 +43,9 @@ def decrypt(data):
         cipher = ChaCha20.new(key=key, nonce=nonce)
         text = cipher.decrypt(ciphertext).decode("utf-8")
 
+        #TODO: remove print
+        print(f"RECEIVED - {text}")
+
         return text
 
     except (ValueError, KeyError):
@@ -63,14 +65,64 @@ def diffie_hellman(sock):
     key = (bg**a) % n
     key = key.to_bytes(32, "little")
 
-def handle_response(sock, data):
+def handle_response(sock, data, command, nickname, password):
+    if data == "CREATED":
+        return "CREATED"
+    elif data == "JOINED":
+        return "JOINED"
+    elif data == "GAMEON":
+        return "GAMEON"
+    elif data.startswith("ERROR"):
+        if data == "ERROR~TAKEN":
+            lobby = input("Name is taken, please enter a different name: ")
+            while True:
+                message = f"{command}~{nickname}~{lobby}~{password}"
+                encrypt_send(sock, message)
+                if recv(sock) == "CREATED":
+                    return "CREATED"
+        # check wrong password
+        elif data[6:] == "password":
+            if command == "JOIN":
+                while True:
+                    password = input("Wrong password, please try again: ")
+                    message = f"{command}~{nickname}~{lobby}~{password}"
+                    encrypt_send(sock, message)
+                    if recv(sock) == "JOINED":
+                        return "JOINED"
+            elif command == "READY":
+                while True:
+                    password = input("Wrong password, please try again: ")
+                    message = f"{command}~{nickname}~{lobby}~{password}"
+                    encrypt_send(sock, message)
+                    if recv(sock) == "GAMEON":
+                        return "GAMEON"
+        # check invalid name
+        elif data[6:] == "name":
+            if command == "JOIN":
+                while True:
+                    password = input("Invalid name, please try again: ")
+                    message = f"{command}~{nickname}~{lobby}~{password}"
+                    encrypt_send(sock, message)
+                    if recv(sock) == "JOINED":
+                        return "JOINED"
+            elif command == "READY":
+                while True:
+                    password = input("Invalid name, please try again: ")
+                    message = f"{command}~{nickname}~{lobby}~{password}"
+                    encrypt_send(sock, message)
+                    if recv(sock) == "GAMEON":
+                        return "GAMEON"
+        elif data[6:] == "not_host":
+            return "not_host"
+
+def get_locations(sock):
     pass
 
 def menu():
     """
     Takes care of start menu before the game begins
     """
-    global server_ip, nickname
+    global server_ip, nickname, tcp_sock
 
     connected = False
     #TODO: change it back to input
@@ -95,29 +147,25 @@ def menu():
             encrypt_send(tcp_sock, message)
             # try again until the name is good
             created = False
-            if recv(tcp_sock) == "ERROR~TAKEN":
-                while True:
-                    lobby = input("Name is taken, please enter a different name: ")
-                    message = f"READY~{nickname}~{lobby}~{password}"
-                    encrypt_send(tcp_sock, message)
-                    if recv(tcp_sock) == "CREATED":
-                        created = True
-                        break
-            # lobby was created          
-            if recv(tcp_sock) == "CREATED" or created:
+            received = recv(tcp_sock)
+            # lobby was created
+            if handle_response(tcp_sock, received, "NEW", nickname, password) == "CREATED":
                 input("Press ENTER when everyone's ready to start the game")
                 message = f"READY~{nickname}~{lobby}~{password}"
                 encrypt_send(tcp_sock, message)
                 received = recv(tcp_sock)
-                starting = False
-                # check if there were errors
-                if received.startswith("ERROR"):
+                # if game is ready
+                if handle_response(tcp_sock, received, "READY", nickname, password) == "GAMEON":
                     pass
-                if received == "GAMEON" or starting:
-                    pass
-                #TODO: call function that waits for everyone's and everything's locations
+                    #TODO: call function that waits for everyone's and everything's locations
+                else:
+                    print("Error when attempting to start game")
+                    sys.exit()
+            else:
+                print("Unable to create lobby")
+                sys.exit()
 
-        if inp == "F":
+        elif inp == "F":
             name = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
             message = f"JOIN~{nickname}~{name}~{password}"
@@ -125,31 +173,15 @@ def menu():
             joined = False
             # check if there were any errors
             received = recv(tcp_sock)
-            if received.startswith("ERROR"):
-                # check wrong password
-                if received[6:] == "password":
-                    while True:
-                        password = input("Wrong password, please try again: ")
-                        message = f"READY~{nickname}~{lobby}~{password}"
-                        encrypt_send(tcp_sock, message)
-                        if recv(tcp_sock) == "JOINED":
-                            joined = True
-                            break
-                # check invalid name
-                elif received[6:] == "name":
-                    while True:
-                        password = input("Invalid name, please try again: ")
-                        message = f"READY~{nickname}~{lobby}~{password}"
-                        encrypt_send(tcp_sock, message)
-                        if recv(tcp_sock) == "JOINED":
-                            joined = True
-                            break
-            if received == "JOINED" or joined:
+            if handle_response(tcp_sock, received, "JOIN", nickname, password) == "JOINED":
                 #TODO: call function that waits for everyone's and everything's locations
                 pass
+            else:
+                print("Unable to join lobby")
+                sys.exit()
         
         else:
-            print("invalid answer, please rerun and try again")
+            print("Invalid answer, please rerun and try again")
             sys.exit()
 
         return True
@@ -397,13 +429,15 @@ def update():
 
 def start():
     Sky()
+    window.title = 'My Game'
+    window.fullscreen = True
+    window.borderless = True
+
+    #TODO: call get locations instead
     wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (8, 5, 1), rotation=(0, 0, 0),
                     texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
     wall_2 = duplicate(wall_1, z=5)
     wall_3 = duplicate(wall_1, z=10)
-    window.title = 'My Game'
-    window.fullscreen = True
-    window.borderless = True
 
     #Creating the enemies
     enemies["Bob"] = Enemy("Bob", 8, 0, 0, True)

@@ -97,9 +97,9 @@ def handle_request(cli_sock, data, key):
         if splits[2] not in lobbies:
             lobbies[splits[2]] = Lobby(splits[2], splits[3], splits[1], cli_sock)
             print(f"Created a new lobby called {splits[2]}")
-            encrypt_send(cli_sock, "CREATED")
+            encrypt_send(cli_sock, "CREATED", key)
         else:
-            encrypt_send(cli_sock, "ERROR~TAKEN")
+            encrypt_send(cli_sock, "ERROR~TAKEN", key)
 
     elif data.startswith("JOIN"):
         # Join a lobby
@@ -128,13 +128,13 @@ def handle_request(cli_sock, data, key):
                     lobbies[splits[2]].ready()
                 else:
                     #TODO: return only host can start message
-                    pass
+                    encrypt_send(cli_sock, "ERROR~not_host", key)
             else:
                 #TODO: return wrong password message
-                pass
+                encrypt_send(cli_sock, "ERROR~password", key)
         else:
             #TODO: return invalid name error
-            pass
+            encrypt_send(cli_sock, "ERROR~name", key)
 
 def handle_client(cli_sock, addr):
     print(f"New client from {addr}")
