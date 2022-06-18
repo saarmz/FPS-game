@@ -16,16 +16,19 @@ nickname = ""
 lobby = ""
 password = ""
 hp = 100
+threads = {}
 
-def recv(sock):
-    byte_data = recv_by_size(sock)
+def recv():
+    global tcp_sock
+
+    byte_data = recv_by_size(tcp_sock)
     print(byte_data)
     if byte_data == b'':
         return ""
     else:
         return decrypt(byte_data)
 
-def encrypt_send(sock, text):
+def encrypt_send(sock, text, tcp):
     global key
 
     #encrypt
@@ -36,7 +39,11 @@ def encrypt_send(sock, text):
     ct = b64encode(ciphertext).decode("utf-8")
     result = json.dumps({'nonce':nonce, 'ciphertext':ct})
     # send the result to the server
-    send_with_size(sock, result)
+    if tcp:
+        send_with_size(sock, result)
+    else:
+        #TODO: add udp support
+        pass
 
 def decrypt(data):
     try:
@@ -57,21 +64,21 @@ def decrypt(data):
         print("Incorrect decryption")
 
 def diffie_hellman(sock):
-    global key
+    global key, tcp_sock
 
     n = 1008001 # relatively large prime number
     g = 151 # small prime number
     a = random.randint(0, n)
 
-    bg = int(recv_by_size(sock).decode("utf-8"))
+    bg = int(recv_by_size(tcp_sock).decode("utf-8"))
     ag = (g**a) % n
     send_with_size(sock, str(ag))
 
     key = (bg**a) % n
     key = key.to_bytes(32, "little")
 
-def handle_response(sock, data, command):
-    global lobby, password
+def handle_response(sock, data):
+    global lobby, password, hp
     if data == "CREATED":
         return "CREATED"
     elif data == "JOINED":
@@ -80,55 +87,48 @@ def handle_response(sock, data, command):
         return "GAMEON"
     elif data.startswith("HIT"):
         splits = data.split("~")
-        # split 0 - command, 1 - player who was hit, 2 - player who shot him
-        if splits[1] == nickname:
+        # split 0 - command, 1 - lobby, 2 - player who was hit, 3 - player who shot him
+        if splits[2] == nickname:
             if hp <= 20:
                 #TODO: death
                 pass
             else:
                 hp -= 20
+                hp_text.text = f"hp: {hp}"
         else:
             pass
     elif data.startswith("ERROR"):
         if data == "ERROR~TAKEN":
             lobby = input("Name is taken, please enter a different name: ")
             while True:
-                message = f"{command}~{nickname}~{lobby}~{password}"
-                encrypt_send(sock, message)
-                if recv(sock) == "CREATED":
+                message = f"NEW~{nickname}~{lobby}~{password}"
+                encrypt_send(sock, message, True)
+                if recv() == "CREATED":
                     return "CREATED"
         # check wrong password
         elif data[6:] == "password":
             if command == "JOIN":
                 while True:
                     password = input("Wrong password, please try again: ")
-                    message = f"{command}~{nickname}~{lobby}~{password}"
-                    encrypt_send(sock, message)
-                    if recv(sock) == "JOINED":
+                    message = f"JOIN~{nickname}~{lobby}~{password}"
+                    encrypt_send(sock, message, True)
+                    if recv() == "JOINED":
                         return "JOINED"
             elif command == "READY":
                 while True:
                     password = input("Wrong password, please try again: ")
-                    message = f"{command}~{nickname}~{lobby}~{password}"
-                    encrypt_send(sock, message)
-                    if recv(sock) == "GAMEON":
+                    message = f"READY~{nickname}~{lobby}~{password}"
+                    encrypt_send(sock, message, True)
+                    if recv() == "GAMEON":
                         return "GAMEON"
         # check invalid name
         elif data[6:] == "name":
-            if command == "JOIN":
-                while True:
-                    password = input("Invalid name, please try again: ")
-                    message = f"{command}~{nickname}~{lobby}~{password}"
-                    encrypt_send(sock, message)
-                    if recv(sock) == "JOINED":
-                        return "JOINED"
-            elif command == "READY":
-                while True:
-                    password = input("Invalid name, please try again: ")
-                    message = f"{command}~{nickname}~{lobby}~{password}"
-                    encrypt_send(sock, message)
-                    if recv(sock) == "GAMEON":
-                        return "GAMEON"
+            while True:
+                password = input("Invalid name, please try again: ")
+                message = f"JOIN~{nickname}~{lobby}~{password}"
+                encrypt_send(sock, message, True)
+                if recv() == "JOINED":
+                    return "JOINED"
         elif data[6:] == "not_host":
             return "not_host"
 
@@ -158,16 +158,16 @@ def menu():
             lobby = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
             message = f"NEW~{nickname}~{lobby}~{password}"
-            encrypt_send(tcp_sock, message)
+            encrypt_send(tcp_sock, message, True)
             # try again until the name is good
             created = False
-            received = recv(tcp_sock)
+            received = recv()
             # lobby was created
-            if handle_response(tcp_sock, received, "NEW") == "CREATED":
+            if handle_response(tcp_sock, received) == "CREATED":
                 input("Press ENTER when everyone's ready to start the game")
                 message = f"READY~{nickname}~{lobby}~{password}"
-                encrypt_send(tcp_sock, message)
-                received = recv(tcp_sock)
+                encrypt_send(tcp_sock, message, True)
+                received = recv()
                 # if game is ready
                 if received == "GAMEON":
                     return True
@@ -179,17 +179,18 @@ def menu():
                 sys.exit()
 
         elif inp == "F":
-            name = input("Please enter the lobby's name: ")
+            lobby = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
-            message = f"JOIN~{nickname}~{name}~{password}"
-            encrypt_send(tcp_sock, message)
+            message = f"JOIN~{nickname}~{lobby}~{password}"
+            encrypt_send(tcp_sock, message, True)
             joined = False
             # check if there were any errors
-            received = recv(tcp_sock)
-            if handle_response(tcp_sock, received, "JOIN") == "JOINED":
-                received = recv(tcp_sock)
+            received = recv()
+            if handle_response(tcp_sock, received) == "JOINED":
+                print("Joined successfully, waiting for host to start the game...")
+                received = recv()
                 # if game is ready
-                if handle_response(tcp_sock, received, "READY") == "GAMEON":
+                if handle_response(tcp_sock, received) == "GAMEON":
                     return True
                 else:
                     print("Error when attempting to start game")
@@ -224,7 +225,7 @@ class Bullet(Entity):
             destroy(self)
 
 class Enemy():
-    def __init__(self, name, x, y, z, shooting) -> None:
+    def __init__(self, name, x, y, z, dead, shooting) -> None:
         if shooting:
             self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), autoplay=False)
             self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
@@ -234,18 +235,12 @@ class Enemy():
             self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
             self.muzzle_animation = False
         self.name = name
-        self.walking = False
-        self.last_walk = 0
         self.speed = 0.3
         self.shooting = shooting
         # txt = Text(text=name, parent=self.animation, billboard=True)
 
     def update(self):
-        if self.walking:
-            curr_time = time.perf_counter()
-            if curr_time - self.last_walk >= 0.01:
-                self.animation.position += self.obj.forward * self.speed
-                self.last_walk = curr_time
+        pass
 
     def update_loc(self, x, y, z) -> None:
         self.position = (x, y, z)
@@ -255,12 +250,22 @@ class Enemy():
     
     def update_walk(self, to_walk) -> None:
         if to_walk and not self.walking:
-            self.walking = True
             self.animation.start()
         elif not to_walk and self.walking:
-            self.walking = False
             self.animation.pause()
-    
+
+    def update_death(self, dead):
+        # check death
+        if not self.dead and dead:
+            self.dead = True
+            self.animation.visible = False
+            self.obj.collider = None
+
+        elif self.dead and not dead:
+            self.dead = False
+            self.animation.visible = True
+            self.obj.collider = "mesh"
+
     def update_shooting(self, shoot):
         if shoot and not self.shooting:
             pos = self.animation.position
@@ -313,7 +318,7 @@ m4_sounds = {
     }
 mag = 30
 mag_size = Text(f"mag: {mag}", origin=(7, 10))
-hp_text = Text(f"hp: {hp}", origin=(7, 15))
+hp_text = Text(f"hp: {hp}", origin=(7, 4))
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
 
@@ -356,16 +361,14 @@ def stop_shooting():
     
 
 def shoot_check_hit():
-    global enemies
+    global enemies, tcp_sock, lobby
 
     Bullet(model="sphere", color=color.gold, scale=1, position=my_player.camera_pivot.world_position,
             rotation=my_player.camera_pivot.world_rotation)
     if len(enemies) > 0:
         for enemy in enemies:
             if enemies[enemy].obj.hovered:
-                destroy(enemies[enemy].obj)
-                destroy(enemies[enemy].animation)
-                enemies.pop(enemy)
+                encrypt_send(tcp_sock, f"HIT~{lobby}~{enemy}~{nickname}", True)
                 break
 
 
@@ -398,18 +401,23 @@ def shooting_sounds():
             x.start()
         shooting = False
 
+def tcp_recv_update():
+    global tcp_sock
+    while True:
+        received = recv()
+        handle_response(tcp_sock, received)
+
 def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running, moving, enemies
+    global gun_up, running, moving, enemies, tcp_sock, nickname, lobby
 
     shooting_sounds()
 
-    #TODO: make players' names visible
-
     #moving the gun while walking    
     if not shooting:
+        # TODO: send UDP location
         if held_keys["shift"]:
             running = True
             my_player.speed = 2 * walking_speed
@@ -436,6 +444,7 @@ def update():
             gun.position = (.4, -.40, -.1)
             gun.rotation = (0, 75, 8)
     elif moving:
+        # TODO: send UDP location
         gun.position = (.4, -.40, -.1)
         gun.rotation = (0, 75, 8)
         moving = False
@@ -450,7 +459,7 @@ def get_locations():
 
     received = None
     while received != "START":
-        received = recv(tcp_sock)
+        received = recv()
         if received.startswith("WALL"):
             splits = received.split("~")
             #split 0 - command, 1 - x, 2 - y, 3 - z, 4 - scale_x, 5 - scale_y, 6 - scale_z
@@ -465,7 +474,7 @@ def get_locations():
                 my_player.cursor.color = color.white
                 walking_speed = my_player.speed
             else:
-                enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False)
+                enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False, False)
 
 
 def start():
@@ -479,21 +488,9 @@ def start():
     # getting all the walls' and players' locations
     get_locations()
 
-
-    # wall_1 = Entity(model="cube", collider="box", position=(-8, 0, 0), scale = (13, 5, 1), rotation=(0, 0, 0),
-    #                 texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
-    # wall_2 = duplicate(wall_1, z=15)
-    # wall_3 = duplicate(wall_1, z=30)
-
-    #Creating the enemies
-    # enemies["Bob"] = Enemy("Bob", -48, 0, 0, True)
-    # enemies["Willy"] = Enemy("Willy", 6,  0, 0, False)
-    # enemies["John"] = Enemy("John", 4, 0, 0, True)
-    # enemies["Mike"] = Enemy("Mike", 2,  0, 0, False)
-
-    # enemies["Mike"].update_walk(True)
-    # enemies["John"].update_walk(True)
-    # enemies["John"].update_rotation(Vec3(enemies["John"].animation.rotation_x, enemies["John"].animation.rotation_y+40, enemies["John"].animation.rotation_z))
+    t = threading.Thread(target=tcp_recv_update)
+    t.start()
+    threads["tcp"] = t
 
 
 def main():

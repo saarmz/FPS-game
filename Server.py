@@ -31,28 +31,26 @@ class Lobby():
         for player in self.players:
             encrypt_send(self.players[player][0], message, keys[player])
 
-    def generate_locations(self):
-        #TODO: generate locations that don't collide with walls
-        for player in self.players:
-            #continues when correct spot was picked in each axis
-            x = randint(-48, 48)
-            z = randint(-48, 48)
-            wrong = True
-            while wrong:
-                for wall in self.walls:
-                    #if in x boundaries
-                    if x + self.walls[wall][3] > self.walls[wall][0] and x - self.walls[wall][3] < self.walls[wall][0]:
-                        #if in z boundaries
-                        if z + self.walls[wall][5] > self.walls[wall][2] and z - self.walls[wall][5] < self.walls[wall][2]:
-                            x = randint(-48, 48)
-                            z = randint(-48, 48)
-                            wrong = True
-                            break
-                        else:
-                            wrong = False
+    def generate_location(self, player):
+        #continues when correct spot was picked in each axis
+        x = randint(-48, 48)
+        z = randint(-48, 48)
+        wrong = True
+        while wrong:
+            for wall in self.walls:
+                #if in x boundaries
+                if x + self.walls[wall][3] > self.walls[wall][0] and x - self.walls[wall][3] < self.walls[wall][0]:
+                    #if in z boundaries
+                    if z + self.walls[wall][5] > self.walls[wall][2] and z - self.walls[wall][5] < self.walls[wall][2]:
+                        x = randint(-48, 48)
+                        z = randint(-48, 48)
+                        wrong = True
+                        break
                     else:
                         wrong = False
-            self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}")
+                else:
+                    wrong = False
+        self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}")
                 
     def send_walls(self):
         #sending the walls' locations
@@ -78,7 +76,8 @@ class Lobby():
             #sending the walls' locations
             self.send_walls()
             # generating and sending player locations
-            self.generate_locations()
+            for player in self.players:
+                self.generate_location(player)
             self.tcp_broadcast("START")
     
 
@@ -185,6 +184,12 @@ def handle_request(cli_sock, data, key):
         else:
             #TODO: return invalid name error
             encrypt_send(cli_sock, "ERROR~name", key)
+    elif data.startswith("HIT"):
+        splits = data.split("~")
+        # split 0 - command, 1 - lobby, 2 - player who was hit, 3 - player who shot him
+        cli_sock = lobbies[splits[1]].players[splits[2]][0]
+        encrypt_send(cli_sock, data, keys[splits[2]])
+        
 
 def handle_client(cli_sock, addr):
     print(f"New client from {addr}")
@@ -193,8 +198,7 @@ def handle_client(cli_sock, addr):
     while not finish:
         try:
             data = recv_by_size(cli_sock)
-            print(f"first receive - {data}")
-            if data != "":
+            if data != b'':
                 message = decrypt(data, key)
                 handle_request(cli_sock, message, key)
             else:
