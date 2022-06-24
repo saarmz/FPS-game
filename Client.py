@@ -22,6 +22,7 @@ hp = 100
 threads = {}
 alive = True
 last_loc_send = time.perf_counter()
+my_player = None # this client's player
 shooting = False # my player's shooting status
 
 def recv():
@@ -97,14 +98,6 @@ def handle_response(sock, data):
             else:
                 hp -= 20
                 hp_text.text = f"hp: {hp}"
-        else:
-            pass
-    elif data.startswith("STOPPED"):
-        # make player's shooting animation stop
-        splits = data.split("~")
-        # split 0 - command, 1 - lobby, 2 - player stopped shooting
-        if splits[2] != nickname:
-            enemies[splits[2]].update_shooting(False)
     elif data.startswith("DEAD"):
         splits = data.split("~")
         # split 0 - command, 1 - lobby, 2 - player who was killed, 3 - player who killed him
@@ -126,6 +119,7 @@ def handle_response(sock, data):
         else:
             #check if the enemy was already created
             if splits[1] in enemies:
+                enemies[splits[1]].update_death(False)
                 #TODO: add rotation support
                 x, y, z = enemies[splits[1]].get_loc()
                 if x != splits[2] and y != splits[3] and z != splits[4]:
@@ -248,7 +242,7 @@ application.development_mode = False
 app = Ursina() # creating a window
 
 class Bullet(Entity):
-    def __init__(self, speed=20, lifetime=5, **kwargs):
+    def __init__(self, speed=20, lifetime=1, **kwargs):
         super().__init__(**kwargs)
         self.speed = speed
         self.lifetime = lifetime
@@ -315,6 +309,7 @@ class Enemy():
 
     def update_shooting(self, shoot):
         if shoot and not self.shooting:
+            self.shooting = True
             pos = self.animation.position
             destroy(self.animation)
             destroy(self.obj)
@@ -323,6 +318,7 @@ class Enemy():
             self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
             self.muzzle_animation = Animation("objs/muzzle_flash.gif", parent=self.animation, y=24, z=24, scale=22, billboard=True)
         elif not shoot and self.shooting:
+            self.shooting = False
             pos = self.animation.position
             destroy(self.animation)
             destroy(self.obj)
@@ -342,7 +338,6 @@ background_sounds = {
 
 ground = Entity(model = "plane", scale = (100, 1, 100), color = color.rgb(0, 255, 25), 
                 texture = "grass", texture_scale = (100, 100), collider = "box") # the ground
-my_player = None # this client's player
 walking_speed = None
 
 gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui, scale=.13, position = (.42, -.40, -.15),
@@ -404,11 +399,10 @@ def stop_shooting():
     for i in m4_sounds:
         m4_sounds[i].stop()
     m4_sounds["M4_ending"].play()
-    encrypt_send(tcp_sock, f"STOPPED~{lobby}~{nickname}")
     
 
 def shoot_check_hit():
-    global enemies, tcp_sock, lobby, shooting
+    global enemies, tcp_sock, lobby, shooting, my_player
 
     Bullet(model="sphere", color=color.gold, scale=1, position=my_player.camera_pivot.world_position,
             rotation=my_player.camera_pivot.world_rotation)
@@ -456,7 +450,7 @@ def tcp_recv_update():
         handle_response(tcp_sock, received)
 
 def send_my_location():
-    global tcp_sock, nickname, lobby, shooting
+    global tcp_sock, nickname, lobby, shooting, my_player
 
     #TODO:  and add rotation
     if shooting:
