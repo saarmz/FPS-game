@@ -51,7 +51,7 @@ class Lobby():
                         wrong = False
                 else:
                     wrong = False
-        self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}~F")
+        self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}~F~0~0~0")
                 
     def send_walls(self):
         #sending the walls' locations
@@ -93,8 +93,6 @@ def encrypt_send(sock, text, key):
     #send it to the client
     send_with_size(sock, result)
 
-    #TODO: remove print after debug
-    print(result)
 
 def decrypt(data, key):
     try:
@@ -105,10 +103,6 @@ def decrypt(data, key):
         # decrypt
         cipher = ChaCha20.new(key=key, nonce=nonce)
         text = cipher.decrypt(ciphertext).decode("utf-8")
-
-        #TODO: remove print after debugging
-        print(f"received - {text}")
-
 
         return text
 
@@ -197,8 +191,8 @@ def handle_request(cli_sock, data, key):
         lobbies[splits[1]].generate_location(splits[2])
     elif data.startswith("LOC"):
         splits = data.split("~")
-        # split 0 - command, 1 - lobby, 2 - player who sent his location, 3 - x, 4 - y, 5 - z, 6 - shooting
-        message = splits[0] + '~' + splits[2] + '~' + splits[3] + '~' + splits[4] + '~' + splits[5] + '~'+ splits[6]
+        # split 0 - command, 1 - lobby, 2 - player who sent his location, 3 - x, 4 - y, 5 - z, 6 - shooting, 7 - x rotation, 8 - y rotation, 9 - z rotation
+        message = splits[0] + '~' + splits[2] + '~' + splits[3] + '~' + splits[4] + '~' + splits[5] + '~'+ splits[6] + '~'+ splits[7] + '~'+ splits[8] + '~'+ splits[9]
         lobbies[splits[1]].tcp_broadcast(message)
         
 

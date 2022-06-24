@@ -11,8 +11,7 @@ from Crypto.Cipher import ChaCha20
 # Global variables used for setting up connection
 tcp_sock = socket.socket()
 
-#TODO: change it back to input
-IP = "192.168.1.245"
+IP = input("Please enter the server's IP: ")
 PORT = 9320
 key = 0
 nickname = ""
@@ -58,9 +57,6 @@ def decrypt(data):
         cipher = ChaCha20.new(key=key, nonce=nonce)
         text = cipher.decrypt(ciphertext).decode("utf-8")
 
-        #TODO: remove print
-        print(f"RECEIVED - {text}")
-
         return text
 
     except (ValueError, KeyError):
@@ -81,7 +77,7 @@ def diffie_hellman(sock):
     key = key.to_bytes(32, "little")
 
 def handle_response(sock, data):
-    global lobby, password, hp, alive, walking_speed, my_player, alive
+    global lobby, password, hp, alive, walking_speed, my_player, alive, kills, kills_text
     if data == "CREATED":
         return "CREATED"
     elif data == "JOINED":
@@ -101,12 +97,13 @@ def handle_response(sock, data):
     elif data.startswith("DEAD"):
         splits = data.split("~")
         # split 0 - command, 1 - lobby, 2 - player who was killed, 3 - player who killed him
-        if splits[2] != nickname:
+        if splits[3] == nickname:
+            kills += 1
+            kills_text.text = f"kills: {kills}"
             enemies[splits[2]].update_death(True)
-            #TODO: add point to killer
     elif data.startswith("LOC"):
         splits = data.split("~")
-        #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z, 5 - shooting (T or F), TODO: add rotation
+        #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z, 5 - shooting (T or F), 6 - x rotation, 7 - y rotation, 8 - z rotation
         #check if the message is for/from you
         if splits[1] == nickname:
             if not alive:
@@ -119,16 +116,18 @@ def handle_response(sock, data):
         else:
             #check if the enemy was already created
             if splits[1] in enemies:
-                enemies[splits[1]].update_death(False)
-                #TODO: add rotation support
+                if enemies[splits[1]].dead == True:
+                    enemies[splits[1]].update_death(False)
                 x, y, z = enemies[splits[1]].get_loc()
                 if x != splits[2] and y != splits[3] and z != splits[4]:
                     enemies[splits[1]].update_walk(True)
                     if splits[5] == "T":
                         enemies[splits[1]].update_loc(float(splits[2]), float(splits[3]), float(splits[4]))
+                        enemies[splits[1]].update_rotation(float(splits[6]), float(splits[7]), float(splits[8]))
                         enemies[splits[1]].update_shooting(True)
                     else:
                         enemies[splits[1]].update_loc(float(splits[2]), float(splits[3]), float(splits[4]))
+                        enemies[splits[1]].update_rotation(float(splits[6]), float(splits[7]), float(splits[8]))
                         enemies[splits[1]].update_shooting(False)
                 else:
                     enemies[splits[1]].update_walk(False)
@@ -257,14 +256,22 @@ class Bullet(Entity):
 
 class Enemy():
     def __init__(self, name, x, y, z, dead, shooting) -> None:
+        # create the animations
+        self.shooting_animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), autoplay=False, visible=False)
+        self.shooting_obj = Entity(model="shooting_walking/shooting1.obj", parent=self.shooting_animation, collider=None, visible=False)
+        self.muzzle_animation = Animation("objs/muzzle_flash.gif", parent=self.shooting_animation, y=24, z=24, scale=22, billboard=True, visible=False)
+        self.walking_animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z), autoplay=False)
+        self.walking_obj = Entity(model="soldier_walking/soldier1.obj", parent=self.walking_animation, collider="mesh", visible=False)
+
         if shooting:
-            self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=(x, y, z), autoplay=False)
-            self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
-            self.muzzle_animation = Animation("objs/muzzle_flash.gif", parent=self.animation, y=24, z=24, scale=22, billboard=True)
+            self.shooting_animation.visible = True
+            self.shooting_obj.collder = "mesh"
+            self.muzzle_animation.visible = True
+            self.walking_animation.visible = False
+            self.walking_obj.collider = None
         else:
-            self.animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=(x, y, z), autoplay=False)
-            self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
-            self.muzzle_animation = False
+            self.walking_animation.visible = True
+            self.walking_obj.collider = "mesh"
         self.name = name
         self.x = x
         self.y = y
@@ -273,59 +280,64 @@ class Enemy():
         self.shooting = shooting
         self.dead = dead
         self.walking = False
-
-    def update(self):
-        pass
     
     def get_loc(self):
         return self.x, self.y, self.z
 
     def update_loc(self, x, y, z) -> None:
-        self.animation.position = (x, y, z)
+        self.shooting_animation.position = (x, y, z)
+        self.walking_animation.position = (x, y, z)
         self.x = x
         self.y = y
         self.z = z
     
-    def update_rotation(self, rotation) -> None:
-        self.animation.rotation = rotation
+    def update_rotation(self, x, y, z) -> None:
+        self.shooting_animation.rotation = (x, y, z)
+        self.walking_animation.rotation = (x, y, z)
     
     def update_walk(self, to_walk) -> None:
         if to_walk and not self.walking:
-            self.animation.start()
+            self.shooting_animation.start()
+            self.walking_animation.start()
         elif not to_walk and self.walking:
-            self.animation.pause()
+            self.shooting_animation.pause()
+            self.walking_animation.pause()
 
     def update_death(self, dead):
         # check death
         if not self.dead and dead:
             self.dead = True
-            self.animation.visible = False
-            self.obj.collider = None
+            self.shooting_animation.visible = False
+            self.walking_animation.visible = False
+            self.muzzle_animation.visible = False
+            self.shooting_obj.collider = None
+            self.walking_obj.collider = None
 
         elif self.dead and not dead:
             self.dead = False
-            self.animation.visible = True
-            self.obj.collider = "mesh"
+            if self.shooting:
+                self.shooting_animation.visible = True
+                self.shooting_obj.collider = "mesh"
+                self.muzzle_animation.visible = True
+            else:
+                self.walking_animation.visible = True
+                self.walking_obj.collider = "mesh"
 
     def update_shooting(self, shoot):
         if shoot and not self.shooting:
             self.shooting = True
-            pos = self.animation.position
-            destroy(self.animation)
-            destroy(self.obj)
-            destroy(self.muzzle_animation)
-            self.animation = FrameAnimation3d("shooting_walking/shooting", scale=0.073, position=pos, autoplay=False)
-            self.obj = Entity(model="shooting_walking/shooting1.obj", parent=self.animation, collider="mesh", visible=False)
-            self.muzzle_animation = Animation("objs/muzzle_flash.gif", parent=self.animation, y=24, z=24, scale=22, billboard=True)
+            self.walking_animation.visible = False
+            self.shooting_animation.visible = True
+            self.walking_obj.collider = None
+            self.shooting_obj.collider = "mesh"
+            self.muzzle_animation.visible = True
         elif not shoot and self.shooting:
             self.shooting = False
-            pos = self.animation.position
-            destroy(self.animation)
-            destroy(self.obj)
-            destroy(self.muzzle_animation)
-            self.animation = FrameAnimation3d("soldier_walking/soldier", scale=0.073, position=pos, autoplay=False)
-            self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
-            self.muzzle_animation = False
+            self.shooting_animation.visible = False
+            self.walking_animation.visible = True
+            self.shooting_obj.collider = None
+            self.walking_obj.collider = "mesh"
+            self.muzzle_animation.visible = False
 
 
 # Global variables used for the game
@@ -358,8 +370,10 @@ m4_sounds = {
     "last1": Audio("sounds/m4_shots/m4_last1.mp3", autoplay=False, volume=2),
     }
 mag = 30
+kills = 0
 mag_size = Text(f"mag: {mag}", origin=(7, 10))
-hp_text = Text(f"hp: {hp}", origin=(7, 4))
+hp_text = Text(f"hp: {hp}", origin=(7.5, 5))
+kills_text = Text(f"kills: {kills}", origin=(9, 0))
 last_shot = time.perf_counter()
 curr_time = time.perf_counter()
 
@@ -408,7 +422,7 @@ def shoot_check_hit():
             rotation=my_player.camera_pivot.world_rotation)
     if len(enemies) > 0:
         for enemy in enemies:
-            if enemies[enemy].obj.hovered:
+            if enemies[enemy].shooting_obj.hovered or enemies[enemy].walking_obj.hovered:
                 encrypt_send(tcp_sock, f"HIT~{lobby}~{enemy}~{nickname}")
                 break
 
@@ -452,11 +466,10 @@ def tcp_recv_update():
 def send_my_location():
     global tcp_sock, nickname, lobby, shooting, my_player
 
-    #TODO:  and add rotation
     if shooting:
-        encrypt_send(tcp_sock,f"LOC~{lobby}~{nickname}~{my_player.x}~{my_player.y}~{my_player.z}~T")
+        encrypt_send(tcp_sock,f"LOC~{lobby}~{nickname}~{my_player.x}~{my_player.y}~{my_player.z}~T~{my_player.rotation_x}~{my_player.rotation_y}~{my_player.rotation_z}")
     else:
-        encrypt_send(tcp_sock,f"LOC~{lobby}~{nickname}~{my_player.x}~{my_player.y}~{my_player.z}~F")
+        encrypt_send(tcp_sock,f"LOC~{lobby}~{nickname}~{my_player.x}~{my_player.y}~{my_player.z}~F~{my_player.rotation_x}~{my_player.rotation_y}~{my_player.rotation_z}")
 
 def update():
     """
@@ -468,7 +481,7 @@ def update():
     if alive:
         # check if enough time had passed to send current location
         curr = time.perf_counter()
-        if curr - last_loc_send >= 0.15 and alive:
+        if curr - last_loc_send >= 0.2 and alive:
             last_loc_send = curr
             send_my_location()
         if my_player.y <= -5 and alive:
@@ -509,8 +522,8 @@ def update():
             running = False
             my_player.speed = walking_speed
         
-        for enemy in enemies:
-            enemies[enemy].update()
+        # for enemy in enemies:
+        #     enemies[enemy].update()
 
 def get_locations():
     global tcp_sock, walls, my_player, walking_speed
@@ -539,8 +552,8 @@ def start():
 
     Sky()
     window.title = 'My Game'
-    window.fullscreen = False
-    window.borderless = False
+    window.fullscreen = True
+    window.borderless = True
 
     # getting all the walls' and players' locations
     get_locations()
