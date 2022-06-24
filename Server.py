@@ -7,9 +7,10 @@ from Crypto.Cipher import ChaCha20
 from random import randint
 
 IP = "0.0.0.0"
-PORT = 9321
+PORT = 9320
 
-server_sock = socket.socket()
+tcp_sock = socket.socket()
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 threads = []
 keys = {}
 lobbies = {}
@@ -50,7 +51,7 @@ class Lobby():
                         wrong = False
                 else:
                     wrong = False
-        self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}")
+        self.tcp_broadcast(f"LOC~{player}~{x}~0~{z}~F")
                 
     def send_walls(self):
         #sending the walls' locations
@@ -136,7 +137,7 @@ def diffie_hellman(cli_sock):
 
 
 def handle_request(cli_sock, data, key):
-    global lobbies
+    global lobbies, ips
 
     if data.startswith("NEW"):
         # Create a new lobby
@@ -176,13 +177,13 @@ def handle_request(cli_sock, data, key):
                 if splits[1] == lobbies[splits[2]].host:
                     lobbies[splits[2]].ready()
                 else:
-                    #TODO: return only host can start message
+                    # return only host can start message
                     encrypt_send(cli_sock, "ERROR~not_host", key)
             else:
-                #TODO: return wrong password message
+                # return wrong password message
                 encrypt_send(cli_sock, "ERROR~password", key)
         else:
-            #TODO: return invalid name error
+            # return invalid name error
             encrypt_send(cli_sock, "ERROR~name", key)
     elif data.startswith("HIT"):
         splits = data.split("~")
@@ -194,9 +195,15 @@ def handle_request(cli_sock, data, key):
         # split 0 - command, 1 - lobby, 2 - player who was killed, 3 - player who killed him
         lobbies[splits[1]].tcp_broadcast(data)
         lobbies[splits[1]].generate_location(splits[2])
+    elif data.startswith("LOC"):
+        splits = data.split("~")
+        # split 0 - command, 1 - lobby, 2 - player who sent his location, 3 - x, 4 - y, 5 - z, 6 - shooting
+        message = splits[0] + '~' + splits[2] + '~' + splits[3] + '~' + splits[4] + '~' + splits[5] + '~'+ splits[6]
+        lobbies[splits[1]].tcp_broadcast(message)
         
 
 def handle_client(cli_sock, addr):
+
     print(f"New client from {addr}")
     finish = False
     key = diffie_hellman(cli_sock)
@@ -219,16 +226,17 @@ def handle_client(cli_sock, addr):
             break
 
 def main():
-    global server_sock
+    global tcp_sock, udp_sock
 
-    server_sock.bind((IP, PORT))
-    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # releasing the port
-    server_sock.listen()
+    #TCP
+    tcp_sock.bind((IP, PORT))
+    tcp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # releasing the port
+    tcp_sock.listen()
     print("Server running...")
 
     while True:
         try:
-            cli_sock, addr = server_sock.accept()
+            cli_sock, addr = tcp_sock.accept()
             t = threading.Thread(target=handle_client, args=(cli_sock, addr))
             t.start()
             threads.append(t)
@@ -238,7 +246,7 @@ def main():
     
     for t in threads:
         t.join()
-    server_sock.close()
+    tcp_sock.close()
     print("Server closed")
 
 if __name__ == "__main__":

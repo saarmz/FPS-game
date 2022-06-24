@@ -10,7 +10,10 @@ from Crypto.Cipher import ChaCha20
 
 # Global variables used for setting up connection
 tcp_sock = socket.socket()
-PORT = 9321
+
+#TODO: change it back to input
+IP = "192.168.1.245"
+PORT = 9320
 key = 0
 nickname = ""
 lobby = ""
@@ -18,6 +21,8 @@ password = ""
 hp = 100
 threads = {}
 alive = True
+last_loc_send = time.perf_counter()
+shooting = False # my player's shooting status
 
 def recv():
     global tcp_sock
@@ -29,7 +34,7 @@ def recv():
     else:
         return decrypt(byte_data)
 
-def encrypt_send(sock, text, tcp):
+def encrypt_send(sock, text):
     global key
 
     #encrypt
@@ -40,11 +45,7 @@ def encrypt_send(sock, text, tcp):
     ct = b64encode(ciphertext).decode("utf-8")
     result = json.dumps({'nonce':nonce, 'ciphertext':ct})
     # send the result to the server
-    if tcp:
-        send_with_size(sock, result)
-    else:
-        #TODO: add udp support
-        pass
+    send_with_size(sock, result)
 
 def decrypt(data):
     try:
@@ -79,7 +80,7 @@ def diffie_hellman(sock):
     key = key.to_bytes(32, "little")
 
 def handle_response(sock, data):
-    global lobby, password, hp, alive
+    global lobby, password, hp, alive, walking_speed, my_player, alive
     if data == "CREATED":
         return "CREATED"
     elif data == "JOINED":
@@ -91,13 +92,19 @@ def handle_response(sock, data):
         # split 0 - command, 1 - lobby, 2 - player who was hit, 3 - player who shot him
         if splits[2] == nickname:
             if hp <= 20:
-                encrypt_send(tcp_sock, f"DEAD~{lobby}~{nickname}~{splits[3]}", True)
+                encrypt_send(tcp_sock, f"DEAD~{lobby}~{nickname}~{splits[3]}")
                 alive = False
             else:
                 hp -= 20
                 hp_text.text = f"hp: {hp}"
         else:
             pass
+    elif data.startswith("STOPPED"):
+        # make player's shooting animation stop
+        splits = data.split("~")
+        # split 0 - command, 1 - lobby, 2 - player stopped shooting
+        if splits[2] != nickname:
+            enemies[splits[2]].update_shooting(False)
     elif data.startswith("DEAD"):
         splits = data.split("~")
         # split 0 - command, 1 - lobby, 2 - player who was killed, 3 - player who killed him
@@ -106,22 +113,43 @@ def handle_response(sock, data):
             #TODO: add point to killer
     elif data.startswith("LOC"):
         splits = data.split("~")
-        #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z
+        #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z, 5 - shooting (T or F), TODO: add rotation
+        #check if the message is for/from you
         if splits[1] == nickname:
-            my_player = FirstPersonController(position = (int(splits[2]), int(splits[3]) + 2, int(splits[4])))
-            my_player.cursor.color = color.white
-            walking_speed = my_player.speed
-            alive = True
-            hp = 100
-            hp_text.text = f"hp: {hp}"
+            if not alive:
+                my_player = FirstPersonController(position = (float(splits[2]), float(splits[3]) + 2, float(splits[4])))
+                my_player.cursor.color = color.white
+                walking_speed = my_player.speed
+                alive = True
+                hp = 100
+                hp_text.text = f"hp: {hp}"
         else:
-            enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False, False)
+            #check if the enemy was already created
+            if splits[1] in enemies:
+                #TODO: add rotation support
+                x, y, z = enemies[splits[1]].get_loc()
+                if x != splits[2] and y != splits[3] and z != splits[4]:
+                    enemies[splits[1]].update_walk(True)
+                    if splits[5] == "T":
+                        enemies[splits[1]].update_loc(float(splits[2]), float(splits[3]), float(splits[4]))
+                        enemies[splits[1]].update_shooting(True)
+                    else:
+                        enemies[splits[1]].update_loc(float(splits[2]), float(splits[3]), float(splits[4]))
+                        enemies[splits[1]].update_shooting(False)
+                else:
+                    enemies[splits[1]].update_walk(False)
+                    if splits[5] == "T":
+                        enemies[splits[1]].update_shooting(True)
+                    else:
+                        enemies[splits[1]].update_shooting(False)
+            else:
+                enemies[splits[1]] = Enemy(splits[1], float(splits[2]), float(splits[3]), float(splits[4]), False, False)
     elif data.startswith("ERROR"):
         if data == "ERROR~TAKEN":
             lobby = input("Name is taken, please enter a different name: ")
             while True:
                 message = f"NEW~{nickname}~{lobby}~{password}"
-                encrypt_send(sock, message, True)
+                encrypt_send(sock, message)
                 if recv() == "CREATED":
                     return "CREATED"
         # check wrong password
@@ -129,7 +157,7 @@ def handle_response(sock, data):
             while True:
                 password = input("Wrong password, please try again: ")
                 message = f"JOIN~{nickname}~{lobby}~{password}"
-                encrypt_send(sock, message, True)
+                encrypt_send(sock, message)
                 if recv() == "JOINED":
                     return "JOINED"
         # check invalid name
@@ -137,7 +165,7 @@ def handle_response(sock, data):
             while True:
                 password = input("Invalid name, please try again: ")
                 message = f"JOIN~{nickname}~{lobby}~{password}"
-                encrypt_send(sock, message, True)
+                encrypt_send(sock, message)
                 if recv() == "JOINED":
                     return "JOINED"
         elif data[6:] == "not_host":
@@ -147,29 +175,27 @@ def menu():
     """
     Takes care of start menu before the game begins
     """
-    global server_ip, nickname, tcp_sock, lobby, password
+    global nickname, tcp_sock, lobby, password
 
     connected = False
-    #TODO: change it back to input
-    server_ip = "192.168.1.245"
     try:
-        tcp_sock.connect((server_ip, PORT))
-        print(f'Connect succeeded {server_ip}:{PORT}')
+        tcp_sock.connect((IP, PORT))
+        print(f'Connect succeeded {IP}:{PORT}')
         connected = True
     except:
-        print(f'Error while trying to connect.  Check ip or port -- {server_ip}:{PORT}')
+        print(f'Error while trying to connect.  Check ip or port -- {IP}:{PORT}')
         return False
     
     if connected:
         diffie_hellman(tcp_sock)
 
         nickname = input("Please enter your nickname: ")
-        inp = input("Enter T to create a new lobby\nor enter F to join a lobby: ")
+        inp = input("Enter T to create a new lobby\nor enter F to join a lobby: ").upper()
         if inp == "T":
             lobby = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
             message = f"NEW~{nickname}~{lobby}~{password}"
-            encrypt_send(tcp_sock, message, True)
+            encrypt_send(tcp_sock, message)
             # try again until the name is good
             created = False
             received = recv()
@@ -177,7 +203,7 @@ def menu():
             if handle_response(tcp_sock, received) == "CREATED":
                 input("Press ENTER when everyone's ready to start the game")
                 message = f"READY~{nickname}~{lobby}~{password}"
-                encrypt_send(tcp_sock, message, True)
+                encrypt_send(tcp_sock, message)
                 received = recv()
                 # if game is ready
                 if received == "GAMEON":
@@ -193,7 +219,7 @@ def menu():
             lobby = input("Please enter the lobby's name: ")
             password = input("Please enter the lobby's password: ")
             message = f"JOIN~{nickname}~{lobby}~{password}"
-            encrypt_send(tcp_sock, message, True)
+            encrypt_send(tcp_sock, message)
             joined = False
             # check if there were any errors
             received = recv()
@@ -246,15 +272,25 @@ class Enemy():
             self.obj = Entity(model="soldier_walking/soldier1.obj", parent=self.animation, collider="mesh", visible=False)
             self.muzzle_animation = False
         self.name = name
+        self.x = x
+        self.y = y
+        self.z = z
         self.speed = 0.3
         self.shooting = shooting
         self.dead = dead
+        self.walking = False
 
     def update(self):
         pass
+    
+    def get_loc(self):
+        return self.x, self.y, self.z
 
     def update_loc(self, x, y, z) -> None:
-        self.position = (x, y, z)
+        self.animation.position = (x, y, z)
+        self.x = x
+        self.y = y
+        self.z = z
     
     def update_rotation(self, rotation) -> None:
         self.animation.rotation = rotation
@@ -314,7 +350,6 @@ gun = Entity(model="objs/m4", texture = "objs/DiffuseTexture", parent=camera.ui,
 gun_up = False
 moving = False
 running = False
-shooting = False
 m4_sounds = {
     "M4_burst": Audio("sounds/m4_shots/m4_burst.mp3", autoplay=False, volume=2),
     "M4_ending": Audio("sounds/m4_shots/m4_ending2.mp3", autoplay=False, volume=2),
@@ -369,22 +404,23 @@ def stop_shooting():
     for i in m4_sounds:
         m4_sounds[i].stop()
     m4_sounds["M4_ending"].play()
+    encrypt_send(tcp_sock, f"STOPPED~{lobby}~{nickname}")
     
 
 def shoot_check_hit():
-    global enemies, tcp_sock, lobby
+    global enemies, tcp_sock, lobby, shooting
 
     Bullet(model="sphere", color=color.gold, scale=1, position=my_player.camera_pivot.world_position,
             rotation=my_player.camera_pivot.world_rotation)
     if len(enemies) > 0:
         for enemy in enemies:
             if enemies[enemy].obj.hovered:
-                encrypt_send(tcp_sock, f"HIT~{lobby}~{enemy}~{nickname}", True)
+                encrypt_send(tcp_sock, f"HIT~{lobby}~{enemy}~{nickname}")
                 break
 
 
 def shooting_sounds():
-    global mag, shooting, last_shot, curr_time, mag_size, m4_sounds
+    global mag, shooting, last_shot, curr_time, mag_size, m4_sounds, lobby, nickname
     #shooting sounds
     if held_keys["left mouse"] and mag > 0:
         if not shooting:
@@ -410,26 +446,43 @@ def shooting_sounds():
         if mag > 0:
             x = threading.Thread(target=stop_shooting)
             x.start()
-        shooting = False
+        shooting = False        
 
 def tcp_recv_update():
     global tcp_sock
+    #runs in background and deals with incoming messages
     while True:
         received = recv()
         handle_response(tcp_sock, received)
+
+def send_my_location():
+    global tcp_sock, nickname, lobby, shooting
+
+    #TODO:  and add rotation
+    if shooting:
+        encrypt_send(tcp_sock,f"LOC~{lobby}~{nickname}~{my_player.x}~{my_player.y}~{my_player.z}~T")
+    else:
+        encrypt_send(tcp_sock,f"LOC~{lobby}~{nickname}~{my_player.x}~{my_player.y}~{my_player.z}~F")
 
 def update():
     """
     Updates values and then renders to screen
     """
-    global gun_up, running, moving, enemies, tcp_sock, nickname, lobby
+    global gun_up, running, moving, enemies, last_loc_send, my_player, alive
 
     shooting_sounds()
-
     if alive:
-        #moving the gun while walking    
+        # check if enough time had passed to send current location
+        curr = time.perf_counter()
+        if curr - last_loc_send >= 0.15 and alive:
+            last_loc_send = curr
+            send_my_location()
+        if my_player.y <= -5 and alive:
+            # make player die
+            alive = False
+            encrypt_send(tcp_sock, f"DEAD~{lobby}~{nickname}~NO-ONE")
+        # moving the gun while walking
         if not shooting:
-            # TODO: send UDP location
             if held_keys["shift"]:
                 running = True
                 my_player.speed = 2 * walking_speed
@@ -456,7 +509,6 @@ def update():
                 gun.position = (.4, -.40, -.1)
                 gun.rotation = (0, 75, 8)
         elif moving:
-            # TODO: send UDP location
             gun.position = (.4, -.40, -.1)
             gun.rotation = (0, 75, 8)
             moving = False
@@ -476,30 +528,30 @@ def get_locations():
             splits = received.split("~")
             #split 0 - command, 1 - x, 2 - y, 3 - z, 4 - scale_x, 5 - scale_y, 6 - scale_z
             print("first wall")
-            walls.append(Entity(model="cube", collider="box", position=(int(splits[1]), int(splits[2]), int(splits[3])), scale = (int(splits[4]), int(splits[5]), 
-                        int(splits[6])), rotation=(0, 0, 0), texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0)))
+            walls.append(Entity(model="cube", collider="box", position=(float(splits[1]), float(splits[2]), float(splits[3])), scale = (float(splits[4]), float(splits[5]), 
+                        float(splits[6])), rotation=(0, 0, 0), texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0)))
         elif received.startswith("LOC"):
             splits = received.split("~")
-            #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z
+            #split 0 - command, 1 - player, 2 - x, 3 - y, 4 - z, 5 - shooting
             if splits[1] == nickname:
-                my_player = FirstPersonController(position = (int(splits[2]), int(splits[3]) + 2, int(splits[4])))
+                my_player = FirstPersonController(position = (float(splits[2]), float(splits[3]) + 2, float(splits[4])))
                 my_player.cursor.color = color.white
                 walking_speed = my_player.speed
             else:
-                enemies[splits[1]] = Enemy(splits[1], int(splits[2]), int(splits[3]), int(splits[4]), False, False)
-
+                enemies[splits[1]] = Enemy(splits[1], float(splits[2]), float(splits[3]), float(splits[4]), False, False)
 
 def start():
     global tcp_sock
 
     Sky()
     window.title = 'My Game'
-    window.fullscreen = True
-    window.borderless = True
+    window.fullscreen = False
+    window.borderless = False
 
     # getting all the walls' and players' locations
     get_locations()
 
+    #tcp thread
     t = threading.Thread(target=tcp_recv_update)
     t.start()
     threads["tcp"] = t
